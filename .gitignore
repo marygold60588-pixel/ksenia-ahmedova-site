@@ -1,0 +1,32 @@
+# Dependencies and build
+node_modules/
+dist/
+
+# Local env and editor
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+.vscode/
+.idea/
+
+# Local helpers, not part of the published site
+start.cmd
+scripts/
+public/preview/
+
+# Unused portraits (not referenced by the site)
+public/media/portraits/office-horizontal.png
+public/media/portraits/standing-vertical.png
+public/media/portraits/reading-notebook.png
+public/media/portraits/sage-blouse.png
+public/media/portraits/table-mug.png
+
+# Source materials that must never enter this repo
+Материалы/
+Референсы/
+отзывы/
+*.docx
+Screenshot*.png
+screenshot*.png
