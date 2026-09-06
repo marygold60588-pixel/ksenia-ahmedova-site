@@ -68,11 +68,11 @@ export default function PaperCard() {
           {open ? (
             <>
               <p className="instrument-format">{gift.item.format}</p>
-              <p className="instrument-title">
+              <h2 className="instrument-title">
                 7 признаков, что вы снова попали
                 <br />
                 в старый сценарий отношений
-              </p>
+              </h2>
               <p className="instrument-note">{gift.item.description}</p>
             </>
           ) : null}

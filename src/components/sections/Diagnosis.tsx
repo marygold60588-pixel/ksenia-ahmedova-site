@@ -31,7 +31,7 @@ export default function Diagnosis() {
 
           <ScrollExpand className="diagnosis-photo" intensity="soft">
             <figure>
-              <img src={assetUrl(product.image)} alt="" loading="lazy" decoding="async" />
+              <img src={assetUrl(product.image)} alt="Ксения Ахмедова с блокнотом" loading="lazy" decoding="async" />
               <GradualBlur />
             </figure>
           </ScrollExpand>

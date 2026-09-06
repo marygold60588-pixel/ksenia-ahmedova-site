@@ -35,7 +35,7 @@ export default function WhoSees() {
           </figure>
         </ScrollExpand>
         <figure className="expert-film">
-          <video autoPlay muted loop playsInline preload="none" poster={assetUrl(expert.image)}>
+          <video autoPlay muted loop playsInline preload="none" poster={assetUrl(expert.image)} aria-hidden="true">
             <source src={assetUrl(expert.video)} type="video/mp4" />
           </video>
         </figure>
