@@ -9,17 +9,26 @@ export default function PaperCard() {
   const [open, setOpen] = useState(false);
   const [contact, setContact] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const gesture = useRef({ x: 0, y: 0, dragged: false });
 
   const sendMaterial = async (event: FormEvent) => {
     event.preventDefault();
-    if (!contact.trim()) return;
-    await submitLead({
+    if (sending || sent || !contact.trim()) return;
+    setSubmitError(false);
+    setSending(true);
+    const result = await submitLead({
       name: "Гайд",
       contact: contact.trim(),
       intent: "gift",
       source: "paper-card",
     });
+    setSending(false);
+    if (!result.ok) {
+      setSubmitError(true);
+      return;
+    }
     setSent(true);
   };
 
@@ -93,9 +102,17 @@ export default function PaperCard() {
                     onChange={(event) => setContact(event.target.value)}
                     placeholder="Почта или Telegram"
                     required
+                    disabled={sending}
                   />
-                  <button type="submit">{gift.cta}</button>
+                  <button type="submit" disabled={sending}>
+                    {gift.cta}
+                  </button>
                 </div>
+                {submitError ? (
+                  <p className="instrument-note" role="alert">
+                    Не удалось отправить. Попробуйте ещё раз.
+                  </p>
+                ) : null}
               </form>
             )
           ) : null}

@@ -7,3 +7,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  ym?: (counterId: number, method: string, ...args: unknown[]) => void;
+}

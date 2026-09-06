@@ -1252,7 +1252,7 @@ a {
 }
 
 .instrument-form input,
-.request-form input:not([type="radio"]),
+.request-form input:not([type="radio"]):not([type="checkbox"]),
 .request-form textarea {
   width: 100%;
   max-width: 100%;
@@ -1335,6 +1335,88 @@ a {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.request-consent {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.request-form .request-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.request-consent input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.request-consent-box {
+  position: relative;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.2rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+}
+
+.request-consent input:checked + .request-consent-box {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.request-consent input:checked + .request-consent-box::after {
+  content: "";
+  position: absolute;
+  left: 0.28rem;
+  top: 0.08rem;
+  width: 0.22rem;
+  height: 0.42rem;
+  border: solid var(--cream);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.request-consent input:focus-visible + .request-consent-box {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.request-consent-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.request-privacy-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+.request-privacy-link:hover {
+  color: var(--gold);
+}
+
+.request-consent-error {
+  margin: 0 0 0 1.7rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold);
 }
 
 .request-success {

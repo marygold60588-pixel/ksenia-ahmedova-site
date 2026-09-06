@@ -1,5 +1,4 @@
 import { apiEndpoints } from "@/api/endpoints";
-import { apiRequest, isApiConfigured } from "@/api/client";
 import type { LeadIntent } from "@/content/types";
 
 export type LeadPayload = {
@@ -25,7 +24,9 @@ class LocalLeadAdapter implements LeadAdapter {
   private storageKey = "akhmedova.leads";
 
   async send(lead: LeadPayload): Promise<LeadResult> {
-    if (typeof window === "undefined") return { ok: true };
+    if (!import.meta.env.DEV || typeof window === "undefined") {
+      return { ok: false };
+    }
     const existing = this.read();
     existing.push(lead);
     window.localStorage.setItem(this.storageKey, JSON.stringify(existing));
@@ -47,21 +48,25 @@ class ApiLeadAdapter implements LeadAdapter {
   id = "api";
 
   async send(lead: LeadPayload): Promise<LeadResult> {
-    await apiRequest(apiEndpoints.leads, {
-      method: "POST",
-      body: JSON.stringify(lead),
-    });
-    return { ok: true };
+    try {
+      const response = await fetch(apiEndpoints.leads, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(lead),
+      });
+      const data = (await response.json().catch(() => null)) as LeadResult | null;
+      return { ok: response.ok && data?.ok === true };
+    } catch {
+      return { ok: false };
+    }
   }
 }
 
-/**
- * Local storage until VITE_API_URL points at the future backend.
- * Telegram, CRM, and GPT stay on that server — not in the browser.
- */
-const adapters: LeadAdapter[] = isApiConfigured()
-  ? [new ApiLeadAdapter()]
-  : [new LocalLeadAdapter()];
+const localAdapter = new LocalLeadAdapter();
+const apiAdapter = new ApiLeadAdapter();
 
 export async function submitLead(
   input: Omit<LeadPayload, "createdAt">,
@@ -71,6 +76,9 @@ export async function submitLead(
     createdAt: new Date().toISOString(),
   };
 
-  const results = await Promise.all(adapters.map((adapter) => adapter.send(lead)));
-  return { ok: results.every((result) => result.ok) };
+  if (import.meta.env.DEV) {
+    return localAdapter.send(lead);
+  }
+
+  return apiAdapter.send(lead);
 }
