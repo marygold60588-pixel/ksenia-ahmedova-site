@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ksenia-ahmedova.ru/sitemap.xml
+Host: ksenia-ahmedova.ru
