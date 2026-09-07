@@ -1,7 +1,11 @@
 import http from "node:http";
+import https from "node:https";
+import dns from "node:dns";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createReadStream } from "node:fs";
+
+dns.setDefaultResultOrder("ipv4first");
 
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
@@ -135,10 +139,12 @@ function parseLead(raw) {
   try {
     data = JSON.parse(raw);
   } catch {
-    return null;
+    return { lead: null, reason: "invalid_json" };
   }
 
-  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { lead: null, reason: "invalid_shape" };
+  }
 
   const name = typeof data.name === "string" ? sanitize(data.name, 80) : "";
   const contact = typeof data.contact === "string" ? sanitize(data.contact, 120) : "";
@@ -152,9 +158,13 @@ function parseLead(raw) {
         : null;
   const source = typeof data.source === "string" && SOURCES.has(data.source) ? data.source : "";
 
-  if (!name || !contact || !intent || message === null) return null;
+  if (!name) return { lead: null, reason: "name" };
+  if (!contact) return { lead: null, reason: "contact" };
+  if (!intent) return { lead: null, reason: "intent" };
+  if (message === null) return { lead: null, reason: "message" };
+  if (!source) return { lead: null, reason: "source" };
 
-  return { name, contact, intent, message, source };
+  return { lead: { name, contact, intent, message, source }, reason: null };
 }
 
 function formatTelegramText(lead) {
@@ -172,32 +182,75 @@ function formatTelegramText(lead) {
   ].join("\n");
 }
 
+function telegramCredentials() {
+  const token = typeof process.env.TELEGRAM_BOT_TOKEN === "string" ? process.env.TELEGRAM_BOT_TOKEN.trim() : "";
+  const rawChatId = typeof process.env.TELEGRAM_CHAT_ID === "string" ? process.env.TELEGRAM_CHAT_ID.trim() : "";
+  const chatId = /^-?\d+$/.test(rawChatId) ? Number(rawChatId) : rawChatId;
+  return { token, chatId };
+}
+
+function networkErrorCode(error) {
+  if (!error || typeof error !== "object") return undefined;
+  if (typeof error.code === "string") return error.code;
+  if (error.cause && typeof error.cause === "object" && typeof error.cause.code === "string") {
+    return error.cause.code;
+  }
+  return undefined;
+}
+
+function postTelegramMessage(token, body) {
+  const payload = JSON.stringify(body);
+  return new Promise((resolve, reject) => {
+    const request = https.request(
+      {
+        hostname: "api.telegram.org",
+        path: `/bot${token}/sendMessage`,
+        method: "POST",
+        family: 4,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      },
+      (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          const text = Buffer.concat(chunks).toString("utf8");
+          let json = null;
+          try {
+            json = JSON.parse(text);
+          } catch {
+            json = null;
+          }
+          resolve({ status: response.statusCode || 0, payload: json });
+        });
+      },
+    );
+    request.setTimeout(15000, () => {
+      request.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }));
+    });
+    request.on("error", reject);
+    request.write(payload);
+    request.end();
+  });
+}
+
 async function sendTelegramMessage(text) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) {
+  const { token, chatId } = telegramCredentials();
+  if (!token || chatId === "" || chatId == null) {
     return { ok: false, status: 500, reason: "not_configured" };
   }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        disable_web_page_preview: true,
-      }),
+    const response = await postTelegramMessage(token, {
+      chat_id: chatId,
+      text,
+      disable_web_page_preview: true,
     });
+    const payload = response.payload;
 
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch {
-      payload = null;
-    }
-
-    if (response.ok && payload && payload.ok === true) {
+    if (response.status >= 200 && response.status < 300 && payload && payload.ok === true) {
       return { ok: true, status: 200 };
     }
 
@@ -210,8 +263,8 @@ async function sendTelegramMessage(text) {
       description:
         payload && typeof payload.description === "string" ? payload.description.slice(0, 200) : undefined,
     };
-  } catch {
-    return { ok: false, status: 502, reason: "telegram_network" };
+  } catch (error) {
+    return { ok: false, status: 502, reason: "telegram_network", errorCode: networkErrorCode(error) };
   }
 }
 
@@ -246,7 +299,10 @@ async function handleLeads(req, res) {
     return;
   }
 
+  console.info("[leads] request received");
+
   if (originDenied(req)) {
+    console.warn("[leads] rejected origin");
     sendJson(req, res, 403, { ok: false });
     return;
   }
@@ -261,29 +317,35 @@ async function handleLeads(req, res) {
   try {
     raw = await readBody(req);
   } catch (error) {
-    console.warn("[leads] rejected payload", { status: error.status === 413 ? 413 : 400 });
+    console.warn("[leads] validation failed", { reason: error.status === 413 ? "too_large" : "body" });
     sendJson(req, res, error.status === 413 ? 413 : 400, { ok: false });
     return;
   }
 
-  const lead = parseLead(raw);
-  if (!lead) {
-    console.warn("[leads] rejected invalid payload");
+  const parsed = parseLead(raw);
+  if (!parsed.lead) {
+    console.warn("[leads] validation failed", { reason: parsed.reason });
     sendJson(req, res, 400, { ok: false });
     return;
   }
 
-  console.info("[leads] received", { source: lead.source, intent: lead.intent });
+  const lead = parsed.lead;
+  console.info("[leads] validation ok", { source: lead.source, intent: lead.intent });
+  console.info("[leads] telegram attempt");
 
   const telegram = await sendTelegramMessage(formatTelegramText(lead));
   if (telegram.ok) {
-    console.info("[leads] telegram sent");
+    console.info("[leads] telegram success", { httpStatus: 200 });
   } else if (telegram.reason === "not_configured") {
-    console.error("[leads] telegram not configured");
+    console.error("[leads] telegram error", { reason: "not_configured" });
   } else if (telegram.reason === "telegram_network") {
-    console.error("[leads] telegram network error");
+    console.error("[leads] telegram error", {
+      reason: "telegram_network",
+      errorCode: telegram.errorCode,
+    });
   } else {
-    console.error("[leads] telegram rejected", {
+    console.error("[leads] telegram error", {
+      reason: "telegram_rejected",
       httpStatus: telegram.telegramStatus,
       errorCode: telegram.errorCode,
       description: telegram.description,
