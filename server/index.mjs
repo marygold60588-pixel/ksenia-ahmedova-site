@@ -10,6 +10,10 @@ const SITE_URL = "https://ksenia-ahmedova.ru/";
 const BODY_LIMIT = 8192;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX = 5;
+const ALLOWED_ORIGINS = new Set([
+  "https://ksenia-ahmedova.ru",
+  "https://www.ksenia-ahmedova.ru",
+]);
 
 const INTENTS = {
   diagnosis: "Диагностика сценария",
@@ -41,12 +45,42 @@ const CONTENT_TYPES = {
 
 const rateHits = new Map();
 
-function sendJson(res, status, body) {
+function corsHeaders(req) {
+  const origin = req.headers.origin;
+  if (typeof origin !== "string" || !ALLOWED_ORIGINS.has(origin)) {
+    return {};
+  }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    Vary: "Origin",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Accept",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+function originDenied(req) {
+  const origin = req.headers.origin;
+  return typeof origin === "string" && origin.length > 0 && !ALLOWED_ORIGINS.has(origin);
+}
+
+function sendJson(req, res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    ...corsHeaders(req),
   });
   res.end(JSON.stringify(body));
+}
+
+function handleCorsPreflight(req, res) {
+  const headers = corsHeaders(req);
+  const allowed = Boolean(headers["Access-Control-Allow-Origin"]);
+  res.writeHead(allowed ? 204 : 403, {
+    "Cache-Control": "no-store",
+    ...headers,
+  });
+  res.end();
 }
 
 function clientIp(req) {
@@ -142,7 +176,7 @@ async function sendTelegramMessage(text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
-    return { status: 500 };
+    return { ok: false, status: 500, reason: "not_configured" };
   }
 
   try {
@@ -164,11 +198,20 @@ async function sendTelegramMessage(text) {
     }
 
     if (response.ok && payload && payload.ok === true) {
-      return { status: 200 };
+      return { ok: true, status: 200 };
     }
-    return { status: 502 };
+
+    return {
+      ok: false,
+      status: 502,
+      reason: "telegram_rejected",
+      telegramStatus: response.status,
+      errorCode: payload && typeof payload.error_code === "number" ? payload.error_code : undefined,
+      description:
+        payload && typeof payload.description === "string" ? payload.description.slice(0, 200) : undefined,
+    };
   } catch {
-    return { status: 502 };
+    return { ok: false, status: 502, reason: "telegram_network" };
   }
 }
 
@@ -199,12 +242,18 @@ async function sendFile(res, filePath) {
 
 async function handleLeads(req, res) {
   if (req.method !== "POST") {
-    sendJson(res, 405, { ok: false });
+    sendJson(req, res, 405, { ok: false });
+    return;
+  }
+
+  if (originDenied(req)) {
+    sendJson(req, res, 403, { ok: false });
     return;
   }
 
   if (isRateLimited(clientIp(req))) {
-    sendJson(res, 429, { ok: false });
+    console.warn("[leads] rate limited");
+    sendJson(req, res, 429, { ok: false });
     return;
   }
 
@@ -212,23 +261,41 @@ async function handleLeads(req, res) {
   try {
     raw = await readBody(req);
   } catch (error) {
-    sendJson(res, error.status === 413 ? 413 : 400, { ok: false });
+    console.warn("[leads] rejected payload", { status: error.status === 413 ? 413 : 400 });
+    sendJson(req, res, error.status === 413 ? 413 : 400, { ok: false });
     return;
   }
 
   const lead = parseLead(raw);
   if (!lead) {
-    sendJson(res, 400, { ok: false });
+    console.warn("[leads] rejected invalid payload");
+    sendJson(req, res, 400, { ok: false });
     return;
   }
 
+  console.info("[leads] received", { source: lead.source, intent: lead.intent });
+
   const telegram = await sendTelegramMessage(formatTelegramText(lead));
-  sendJson(res, telegram.status === 200 ? 200 : telegram.status, { ok: telegram.status === 200 });
+  if (telegram.ok) {
+    console.info("[leads] telegram sent");
+  } else if (telegram.reason === "not_configured") {
+    console.error("[leads] telegram not configured");
+  } else if (telegram.reason === "telegram_network") {
+    console.error("[leads] telegram network error");
+  } else {
+    console.error("[leads] telegram rejected", {
+      httpStatus: telegram.telegramStatus,
+      errorCode: telegram.errorCode,
+      description: telegram.description,
+    });
+  }
+
+  sendJson(req, res, telegram.status, { ok: telegram.ok === true });
 }
 
 async function handleStatic(req, res, urlPath) {
   if (req.method !== "GET" && req.method !== "HEAD") {
-    sendJson(res, 405, { ok: false });
+    sendJson(req, res, 405, { ok: false });
     return;
   }
 
@@ -261,12 +328,17 @@ const server = http.createServer(async (req, res) => {
   try {
     const urlPath = req.url || "/";
 
+    if (urlPath.startsWith("/api/") && req.method === "OPTIONS") {
+      handleCorsPreflight(req, res);
+      return;
+    }
+
     if (urlPath === "/api/health" || urlPath.startsWith("/api/health?")) {
       if (req.method !== "GET") {
-        sendJson(res, 405, { ok: false });
+        sendJson(req, res, 405, { ok: false });
         return;
       }
-      sendJson(res, 200, { ok: true });
+      sendJson(req, res, 200, { ok: true });
       return;
     }
 
@@ -276,14 +348,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath.startsWith("/api/")) {
-      sendJson(res, 404, { ok: false });
+      sendJson(req, res, 404, { ok: false });
       return;
     }
 
     await handleStatic(req, res, urlPath);
   } catch {
     if (!res.headersSent) {
-      sendJson(res, 500, { ok: false });
+      sendJson(req, res, 500, { ok: false });
     }
   }
 });

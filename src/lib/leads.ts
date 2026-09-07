@@ -1,3 +1,4 @@
+import { getApiBaseUrl, isApiConfigured } from "@/api/client";
 import { apiEndpoints } from "@/api/endpoints";
 import type { LeadIntent } from "@/content/types";
 
@@ -48,8 +49,12 @@ class ApiLeadAdapter implements LeadAdapter {
   id = "api";
 
   async send(lead: LeadPayload): Promise<LeadResult> {
+    if (!isApiConfigured()) {
+      return { ok: false };
+    }
+
     try {
-      const response = await fetch(apiEndpoints.leads, {
+      const response = await fetch(`${getApiBaseUrl()}${apiEndpoints.leads}`, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -76,7 +81,7 @@ export async function submitLead(
     createdAt: new Date().toISOString(),
   };
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !isApiConfigured()) {
     return localAdapter.send(lead);
   }
 
