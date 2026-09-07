@@ -1,11 +1,13 @@
 import http from "node:http";
 import https from "node:https";
 import dns from "node:dns";
+import { lookup } from "node:dns/promises";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createReadStream } from "node:fs";
 
 dns.setDefaultResultOrder("ipv4first");
+const BUILD_ID = "e9d8cac-diag";
 
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
@@ -87,12 +89,30 @@ function handleCorsPreflight(req, res) {
   res.end();
 }
 
+function firstHeaderIp(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  return value.split(",")[0].trim();
+}
+
 function clientIp(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.trim()) {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.socket.remoteAddress || "unknown";
+  return (
+    firstHeaderIp(req.headers["x-forwarded-for"]) ||
+    firstHeaderIp(req.headers["x-real-ip"]) ||
+    req.socket.remoteAddress ||
+    "unknown"
+  );
+}
+
+function isLocalOrUnknownIp(ip) {
+  const value = String(ip).replace(/^::ffff:/, "");
+  return (
+    value === "unknown" ||
+    value === "127.0.0.1" ||
+    value === "::1" ||
+    value.startsWith("10.") ||
+    value.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(value)
+  );
 }
 
 function isRateLimited(ip) {
@@ -303,13 +323,14 @@ async function handleLeads(req, res) {
 
   if (originDenied(req)) {
     console.warn("[leads] rejected origin");
-    sendJson(req, res, 403, { ok: false });
+    sendJson(req, res, 403, { ok: false, stage: "origin" });
     return;
   }
 
-  if (isRateLimited(clientIp(req))) {
+  const ip = clientIp(req);
+  if (!isLocalOrUnknownIp(ip) && isRateLimited(ip)) {
     console.warn("[leads] rate limited");
-    sendJson(req, res, 429, { ok: false });
+    sendJson(req, res, 429, { ok: false, stage: "rate_limited" });
     return;
   }
 
@@ -318,14 +339,14 @@ async function handleLeads(req, res) {
     raw = await readBody(req);
   } catch (error) {
     console.warn("[leads] validation failed", { reason: error.status === 413 ? "too_large" : "body" });
-    sendJson(req, res, error.status === 413 ? 413 : 400, { ok: false });
+    sendJson(req, res, error.status === 413 ? 413 : 400, { ok: false, stage: "validation" });
     return;
   }
 
   const parsed = parseLead(raw);
   if (!parsed.lead) {
     console.warn("[leads] validation failed", { reason: parsed.reason });
-    sendJson(req, res, 400, { ok: false });
+    sendJson(req, res, 400, { ok: false, stage: "validation" });
     return;
   }
 
@@ -352,7 +373,71 @@ async function handleLeads(req, res) {
     });
   }
 
-  sendJson(req, res, telegram.status, { ok: telegram.ok === true });
+  if (telegram.ok) {
+    sendJson(req, res, 200, { ok: true });
+    return;
+  }
+  if (telegram.reason === "not_configured") {
+    sendJson(req, res, 500, { ok: false, stage: "telegram_not_configured" });
+    return;
+  }
+  if (telegram.reason === "telegram_network") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "telegram_network",
+      errorCode: telegram.errorCode || null,
+    });
+    return;
+  }
+  sendJson(req, res, 502, {
+    ok: false,
+    stage: "telegram_rejected",
+    telegramStatus: telegram.telegramStatus || null,
+    description: telegram.description || null,
+  });
+}
+
+async function handleOutbound(req, res) {
+  if (req.method !== "GET") {
+    sendJson(req, res, 405, { ok: false });
+    return;
+  }
+
+  const result = { ok: true, build: BUILD_ID };
+  const dnsStarted = Date.now();
+  try {
+    const dns4 = await lookup("api.telegram.org", { family: 4 });
+    result.dns = { address: dns4.address, family: dns4.family, ms: Date.now() - dnsStarted };
+  } catch (error) {
+    result.dns = { errorCode: networkErrorCode(error) || "dns_failed", ms: Date.now() - dnsStarted };
+    sendJson(req, res, 200, result);
+    return;
+  }
+
+  const httpsStarted = Date.now();
+  result.https = await new Promise((resolve) => {
+    const request = https.request(
+      {
+        hostname: "api.telegram.org",
+        path: "/",
+        method: "GET",
+        family: 4,
+      },
+      (response) => {
+        response.resume();
+        resolve({ status: response.statusCode || 0, ms: Date.now() - httpsStarted });
+      },
+    );
+    request.setTimeout(8000, () => {
+      request.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }));
+    });
+    request.on("error", (error) => {
+      resolve({ errorCode: networkErrorCode(error) || "https_failed", ms: Date.now() - httpsStarted });
+    });
+    request.end();
+  });
+
+  sendJson(req, res, 200, result);
 }
 
 async function handleStatic(req, res, urlPath) {
@@ -401,6 +486,11 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(req, res, 200, { ok: true });
+      return;
+    }
+
+    if (urlPath === "/api/outbound" || urlPath.startsWith("/api/outbound?")) {
+      await handleOutbound(req, res);
       return;
     }
 
