@@ -1,5 +1,7 @@
 import http from "node:http";
 import https from "node:https";
+import net from "node:net";
+import tls from "node:tls";
 import dns from "node:dns";
 import { lookup } from "node:dns/promises";
 import fs from "node:fs/promises";
@@ -7,7 +9,10 @@ import path from "node:path";
 import { createReadStream } from "node:fs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "e9d8cac-diag";
+const BUILD_ID = "telegram-proxy";
+const TELEGRAM_HOST = "api.telegram.org";
+const TELEGRAM_PORT = 443;
+const TELEGRAM_TIMEOUT_MS = 15000;
 
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
@@ -209,6 +214,45 @@ function telegramCredentials() {
   return { token, chatId };
 }
 
+function telegramProxyRaw() {
+  return typeof process.env.TELEGRAM_PROXY === "string" ? process.env.TELEGRAM_PROXY.trim() : "";
+}
+
+function getTelegramProxy() {
+  const raw = telegramProxyRaw();
+  if (!raw) return null;
+
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { ok: false, error: "invalid_proxy_url" };
+  }
+
+  const protocol = url.protocol.replace(":", "").toLowerCase();
+  const supported = new Set(["http", "https", "socks", "socks4", "socks4a", "socks5", "socks5h"]);
+  if (!supported.has(protocol) || !url.hostname) {
+    return { ok: false, error: "unsupported_proxy_protocol" };
+  }
+
+  return { ok: true, url, protocol };
+}
+
+function telegramProxyMeta() {
+  const proxy = getTelegramProxy();
+  if (!proxy) return { configured: false, protocol: null };
+  if (!proxy.ok) return { configured: true, protocol: "invalid" };
+  return { configured: true, protocol: proxy.protocol };
+}
+
+function timeoutError(message = "Telegram API timeout") {
+  return Object.assign(new Error(message), { code: "ETIMEDOUT" });
+}
+
+function proxyError(message) {
+  return Object.assign(new Error(message), { code: "EPROXY" });
+}
+
 function networkErrorCode(error) {
   if (!error || typeof error !== "object") return undefined;
   if (typeof error.code === "string") return error.code;
@@ -218,37 +262,306 @@ function networkErrorCode(error) {
   return undefined;
 }
 
+function isTelegramTimeoutError(error) {
+  const code = networkErrorCode(error);
+  return code === "ETIMEDOUT" || code === "ESOCKETTIMEDOUT" || code === "ETIMEOUT";
+}
+
+function telegramTimeoutHint(proxyConfigured) {
+  if (proxyConfigured) {
+    return "Telegram API timed out through TELEGRAM_PROXY. Check that the proxy can reach api.telegram.org:443.";
+  }
+  return "Telegram API timed out (ETIMEDOUT). The hoster may block api.telegram.org:443. Set TELEGRAM_PROXY.";
+}
+
+function readExact(socket, size) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let received = 0;
+
+    const cleanup = () => {
+      socket.off("data", onData);
+      socket.off("error", onError);
+      socket.off("close", onClose);
+    };
+
+    const onData = (chunk) => {
+      chunks.push(chunk);
+      received += chunk.length;
+      if (received < size) return;
+      cleanup();
+      const buf = Buffer.concat(chunks);
+      if (buf.length > size) socket.unshift(buf.subarray(size));
+      resolve(buf.subarray(0, size));
+    };
+
+    const onError = (error) => {
+      cleanup();
+      reject(error);
+    };
+
+    const onClose = () => {
+      cleanup();
+      reject(proxyError("proxy connection closed"));
+    };
+
+    socket.on("data", onData);
+    socket.on("error", onError);
+    socket.on("close", onClose);
+  });
+}
+
+function connectTcp(host, port, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect({ host, port, family: 4 });
+    socket.setTimeout(timeoutMs, () => {
+      socket.destroy(timeoutError());
+    });
+    socket.once("connect", () => {
+      socket.removeListener("error", reject);
+      resolve(socket);
+    });
+    socket.once("error", reject);
+  });
+}
+
+function connectHttpProxy(proxyUrl, targetHost, targetPort, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const isTlsProxy = proxyUrl.protocol === "https:";
+    const port = Number(proxyUrl.port) || (isTlsProxy ? 443 : 80);
+    const headers = {
+      Host: `${targetHost}:${targetPort}`,
+    };
+    if (proxyUrl.username || proxyUrl.password) {
+      const auth = `${decodeURIComponent(proxyUrl.username)}:${decodeURIComponent(proxyUrl.password)}`;
+      headers["Proxy-Authorization"] = `Basic ${Buffer.from(auth).toString("base64")}`;
+    }
+
+    const request = (isTlsProxy ? https : http).request({
+      hostname: proxyUrl.hostname,
+      port,
+      method: "CONNECT",
+      path: `${targetHost}:${targetPort}`,
+      family: 4,
+      headers,
+    });
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(timeoutError());
+    });
+    request.once("connect", (response, socket, head) => {
+      if (response.statusCode !== 200) {
+        socket.destroy();
+        reject(proxyError(`proxy CONNECT ${response.statusCode}`));
+        return;
+      }
+      if (head && head.length) socket.unshift(head);
+      socket.setTimeout(timeoutMs, () => {
+        socket.destroy(timeoutError());
+      });
+      resolve(socket);
+    });
+    request.once("error", reject);
+    request.end();
+  });
+}
+
+async function connectSocks5(proxyUrl, targetHost, targetPort, timeoutMs) {
+  const socket = await connectTcp(proxyUrl.hostname, Number(proxyUrl.port) || 1080, timeoutMs);
+  try {
+    const user = decodeURIComponent(proxyUrl.username);
+    const pass = decodeURIComponent(proxyUrl.password);
+    const offerAuth = user.length > 0 || pass.length > 0;
+
+    const greetingPromise = readExact(socket, 2);
+    socket.write(offerAuth ? Buffer.from([0x05, 0x02, 0x00, 0x02]) : Buffer.from([0x05, 0x01, 0x00]));
+    const greeting = await greetingPromise;
+    if (greeting[0] !== 0x05) {
+      throw proxyError("SOCKS5 greeting failed");
+    }
+    if (greeting[1] === 0xff) {
+      throw proxyError("SOCKS5 no acceptable auth");
+    }
+    if (greeting[1] === 0x02) {
+      const userBuf = Buffer.from(user);
+      const passBuf = Buffer.from(pass);
+      if (userBuf.length > 255 || passBuf.length > 255) {
+        throw proxyError("SOCKS5 credentials too long");
+      }
+      const authPromise = readExact(socket, 2);
+      socket.write(Buffer.concat([Buffer.from([0x01, userBuf.length]), userBuf, Buffer.from([passBuf.length]), passBuf]));
+      const auth = await authPromise;
+      if (auth[1] !== 0x00) {
+        throw proxyError("SOCKS5 auth failed");
+      }
+    } else if (greeting[1] !== 0x00) {
+      throw proxyError("SOCKS5 unsupported auth");
+    }
+
+    const hostBuf = Buffer.from(targetHost);
+    if (hostBuf.length > 255) {
+      throw proxyError("SOCKS5 host too long");
+    }
+    const request = Buffer.alloc(7 + hostBuf.length);
+    request[0] = 0x05;
+    request[1] = 0x01;
+    request[2] = 0x00;
+    request[3] = 0x03;
+    request[4] = hostBuf.length;
+    hostBuf.copy(request, 5);
+    request.writeUInt16BE(targetPort, 5 + hostBuf.length);
+    const headPromise = readExact(socket, 4);
+    socket.write(request);
+
+    const head = await headPromise;
+    if (head[1] !== 0x00) {
+      throw proxyError(`SOCKS5 CONNECT failed (${head[1]})`);
+    }
+    if (head[3] === 0x01) await readExact(socket, 6);
+    else if (head[3] === 0x04) await readExact(socket, 18);
+    else if (head[3] === 0x03) {
+      const len = await readExact(socket, 1);
+      await readExact(socket, len[0] + 2);
+    } else {
+      throw proxyError("SOCKS5 unknown ATYP");
+    }
+
+    return socket;
+  } catch (error) {
+    socket.destroy();
+    throw error;
+  }
+}
+
+async function connectSocks4a(proxyUrl, targetHost, targetPort, timeoutMs) {
+  const socket = await connectTcp(proxyUrl.hostname, Number(proxyUrl.port) || 1080, timeoutMs);
+  try {
+    const userBuf = Buffer.from(decodeURIComponent(proxyUrl.username));
+    const hostBuf = Buffer.from(targetHost);
+    const request = Buffer.alloc(9 + userBuf.length + hostBuf.length);
+    request[0] = 0x04;
+    request[1] = 0x01;
+    request.writeUInt16BE(targetPort, 2);
+    request[4] = 0x00;
+    request[5] = 0x00;
+    request[6] = 0x00;
+    request[7] = 0x01;
+    userBuf.copy(request, 8);
+    request[8 + userBuf.length] = 0x00;
+    hostBuf.copy(request, 9 + userBuf.length);
+    request[request.length - 1] = 0x00;
+    const responsePromise = readExact(socket, 8);
+    socket.write(request);
+
+    const response = await responsePromise;
+    if (response[1] !== 90) {
+      throw proxyError(`SOCKS4 CONNECT failed (${response[1]})`);
+    }
+    return socket;
+  } catch (error) {
+    socket.destroy();
+    throw error;
+  }
+}
+
+function openProxyTunnel(proxyUrl, targetHost, targetPort, timeoutMs) {
+  const protocol = proxyUrl.protocol.replace(":", "").toLowerCase();
+  if (protocol === "http" || protocol === "https") {
+    return connectHttpProxy(proxyUrl, targetHost, targetPort, timeoutMs);
+  }
+  if (protocol === "socks" || protocol === "socks5" || protocol === "socks5h") {
+    return connectSocks5(proxyUrl, targetHost, targetPort, timeoutMs);
+  }
+  if (protocol === "socks4" || protocol === "socks4a") {
+    return connectSocks4a(proxyUrl, targetHost, targetPort, timeoutMs);
+  }
+  return Promise.reject(proxyError("unsupported_proxy_protocol"));
+}
+
+async function connectTelegramTls(proxyUrl) {
+  const tunnel = await openProxyTunnel(proxyUrl, TELEGRAM_HOST, TELEGRAM_PORT, TELEGRAM_TIMEOUT_MS);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const tlsSocket = tls.connect(
+      {
+        socket: tunnel,
+        servername: TELEGRAM_HOST,
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        tlsSocket.setTimeout(0);
+        resolve(tlsSocket);
+      },
+    );
+    tlsSocket.setTimeout(TELEGRAM_TIMEOUT_MS, () => {
+      tlsSocket.destroy(timeoutError());
+    });
+    tlsSocket.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
+  });
+}
+
+function telegramHttpsOptions(extra) {
+  const proxy = getTelegramProxy();
+  if (proxy && !proxy.ok) {
+    throw proxyError(proxy.error);
+  }
+
+  const options = {
+    hostname: TELEGRAM_HOST,
+    family: 4,
+    ...extra,
+  };
+
+  if (proxy) {
+    options.agent = false;
+    options.createConnection = (_opts, callback) => {
+      connectTelegramTls(proxy.url)
+        .then((socket) => callback(null, socket))
+        .catch(callback);
+    };
+  }
+
+  return options;
+}
+
 function postTelegramMessage(token, body) {
   const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
-    const request = https.request(
-      {
-        hostname: "api.telegram.org",
+    let requestOptions;
+    try {
+      requestOptions = telegramHttpsOptions({
         path: `/bot${token}/sendMessage`,
         method: "POST",
-        family: 4,
         headers: {
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(payload),
         },
-      },
-      (response) => {
-        const chunks = [];
-        response.on("data", (chunk) => chunks.push(chunk));
-        response.on("end", () => {
-          const text = Buffer.concat(chunks).toString("utf8");
-          let json = null;
-          try {
-            json = JSON.parse(text);
-          } catch {
-            json = null;
-          }
-          resolve({ status: response.statusCode || 0, payload: json });
-        });
-      },
-    );
-    request.setTimeout(15000, () => {
-      request.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }));
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const request = https.request(requestOptions, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => {
+        const text = Buffer.concat(chunks).toString("utf8");
+        let json = null;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          json = null;
+        }
+        resolve({ status: response.statusCode || 0, payload: json });
+      });
+    });
+    request.setTimeout(TELEGRAM_TIMEOUT_MS, () => {
+      request.destroy(timeoutError());
     });
     request.on("error", reject);
     request.write(payload);
@@ -284,7 +597,30 @@ async function sendTelegramMessage(text) {
         payload && typeof payload.description === "string" ? payload.description.slice(0, 200) : undefined,
     };
   } catch (error) {
-    return { ok: false, status: 502, reason: "telegram_network", errorCode: networkErrorCode(error) };
+    const errorCode = networkErrorCode(error);
+    const proxyConfigured = Boolean(telegramProxyRaw());
+
+    if (errorCode === "EPROXY") {
+      return {
+        ok: false,
+        status: 500,
+        reason: "proxy_invalid",
+        errorCode,
+        hint: "TELEGRAM_PROXY is set but invalid. Use http://, https://, socks5://, or socks4://.",
+      };
+    }
+
+    if (isTelegramTimeoutError(error)) {
+      return {
+        ok: false,
+        status: 502,
+        reason: "telegram_timeout",
+        errorCode: errorCode || "ETIMEDOUT",
+        hint: telegramTimeoutHint(proxyConfigured),
+      };
+    }
+
+    return { ok: false, status: 502, reason: "telegram_network", errorCode };
   }
 }
 
@@ -355,14 +691,30 @@ async function handleLeads(req, res) {
   console.info("[leads] telegram attempt");
 
   const telegram = await sendTelegramMessage(formatTelegramText(lead));
+  const proxyMeta = telegramProxyMeta();
   if (telegram.ok) {
-    console.info("[leads] telegram success", { httpStatus: 200 });
+    console.info("[leads] telegram success", { httpStatus: 200, proxyConfigured: proxyMeta.configured });
   } else if (telegram.reason === "not_configured") {
     console.error("[leads] telegram error", { reason: "not_configured" });
+  } else if (telegram.reason === "proxy_invalid") {
+    console.error("[leads] telegram error", {
+      reason: "proxy_invalid",
+      errorCode: telegram.errorCode,
+      hint: telegram.hint,
+    });
+  } else if (telegram.reason === "telegram_timeout") {
+    console.error("[leads] telegram timeout", {
+      reason: "telegram_timeout",
+      errorCode: telegram.errorCode,
+      proxyConfigured: proxyMeta.configured,
+      proxyProtocol: proxyMeta.protocol,
+      hint: telegram.hint,
+    });
   } else if (telegram.reason === "telegram_network") {
     console.error("[leads] telegram error", {
       reason: "telegram_network",
       errorCode: telegram.errorCode,
+      proxyConfigured: proxyMeta.configured,
     });
   } else {
     console.error("[leads] telegram error", {
@@ -379,6 +731,23 @@ async function handleLeads(req, res) {
   }
   if (telegram.reason === "not_configured") {
     sendJson(req, res, 500, { ok: false, stage: "telegram_not_configured" });
+    return;
+  }
+  if (telegram.reason === "proxy_invalid") {
+    sendJson(req, res, 500, {
+      ok: false,
+      stage: "telegram_proxy_invalid",
+      hint: telegram.hint || null,
+    });
+    return;
+  }
+  if (telegram.reason === "telegram_timeout") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "telegram_timeout",
+      errorCode: telegram.errorCode || "ETIMEDOUT",
+      hint: telegram.hint || null,
+    });
     return;
   }
   if (telegram.reason === "telegram_network") {
@@ -403,10 +772,10 @@ async function handleOutbound(req, res) {
     return;
   }
 
-  const result = { ok: true, build: BUILD_ID };
+  const result = { ok: true, build: BUILD_ID, proxy: telegramProxyMeta() };
   const dnsStarted = Date.now();
   try {
-    const dns4 = await lookup("api.telegram.org", { family: 4 });
+    const dns4 = await lookup(TELEGRAM_HOST, { family: 4 });
     result.dns = { address: dns4.address, family: dns4.family, ms: Date.now() - dnsStarted };
   } catch (error) {
     result.dns = { errorCode: networkErrorCode(error) || "dns_failed", ms: Date.now() - dnsStarted };
@@ -416,23 +785,34 @@ async function handleOutbound(req, res) {
 
   const httpsStarted = Date.now();
   result.https = await new Promise((resolve) => {
-    const request = https.request(
-      {
-        hostname: "api.telegram.org",
+    let requestOptions;
+    try {
+      requestOptions = telegramHttpsOptions({
         path: "/",
         method: "GET",
-        family: 4,
-      },
-      (response) => {
-        response.resume();
-        resolve({ status: response.statusCode || 0, ms: Date.now() - httpsStarted });
-      },
-    );
+      });
+    } catch (error) {
+      resolve({
+        errorCode: networkErrorCode(error) || "proxy_invalid",
+        ms: Date.now() - httpsStarted,
+      });
+      return;
+    }
+
+    const request = https.request(requestOptions, (response) => {
+      response.resume();
+      resolve({ status: response.statusCode || 0, ms: Date.now() - httpsStarted });
+    });
     request.setTimeout(8000, () => {
-      request.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }));
+      request.destroy(timeoutError());
     });
     request.on("error", (error) => {
-      resolve({ errorCode: networkErrorCode(error) || "https_failed", ms: Date.now() - httpsStarted });
+      const errorCode = networkErrorCode(error) || "https_failed";
+      resolve({
+        errorCode,
+        timeout: isTelegramTimeoutError(error),
+        ms: Date.now() - httpsStarted,
+      });
     });
     request.end();
   });
@@ -513,5 +893,11 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
+  const proxy = telegramProxyMeta();
   console.log(`Server listening on ${HOST}:${PORT}`);
+  if (proxy.configured) {
+    console.info("[telegram] proxy enabled", { protocol: proxy.protocol });
+  } else {
+    console.info("[telegram] proxy disabled");
+  }
 });
