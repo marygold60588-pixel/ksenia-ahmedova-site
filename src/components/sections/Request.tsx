@@ -2,12 +2,13 @@ import { useRef, useState, type FormEvent } from "react";
 import BlurText from "@/components/bits/BlurText";
 import ScrollReveal from "@/components/bits/ScrollReveal";
 import { site } from "@/content";
-import type { LeadIntent } from "@/content/types";
+import type { ContactChannel, LeadIntent } from "@/content/types";
 import { submitLead } from "@/lib/leads";
 
 export default function Request() {
   const { form } = site;
   const [intent, setIntent] = useState<LeadIntent>("consultation");
+  const [channel, setChannel] = useState<ContactChannel>("telegram");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
@@ -32,6 +33,7 @@ export default function Request() {
       name: name.trim(),
       contact: contact.trim(),
       intent,
+      contactChannel: channel,
       message: message.trim() || undefined,
       source: "site-form",
     });
@@ -71,12 +73,31 @@ export default function Request() {
                 required
               />
             </label>
+            <fieldset>
+              <legend>{form.channelLabel}</legend>
+              <div className="intent-row">
+                {form.channels.map((item) => (
+                  <label key={item.value} className={channel === item.value ? "is-on" : ""}>
+                    <input
+                      type="radio"
+                      name="contactChannel"
+                      value={item.value}
+                      checked={channel === item.value}
+                      onChange={() => setChannel(item.value)}
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <label>
               {form.contactLabel}
               <input
                 value={contact}
                 onChange={(event) => setContact(event.target.value)}
-                placeholder={form.contactHint}
+                placeholder={form.channelHints[channel]}
+                type={channel === "email" ? "email" : "text"}
+                autoComplete={channel === "email" ? "email" : "off"}
                 required
               />
             </label>

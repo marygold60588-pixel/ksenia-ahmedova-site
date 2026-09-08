@@ -1,11 +1,12 @@
 import { getApiBaseUrl, isApiConfigured } from "@/api/client";
 import { apiEndpoints } from "@/api/endpoints";
-import type { LeadIntent } from "@/content/types";
+import type { LeadIntent, ContactChannel } from "@/content/types";
 
 export type LeadPayload = {
   name: string;
   contact: string;
   intent: LeadIntent;
+  contactChannel: ContactChannel;
   message?: string;
   source: "site-form" | "paper-card" | "agent";
   createdAt: string;

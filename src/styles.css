@@ -1238,6 +1238,19 @@ a {
   text-align: left;
 }
 
+.instrument-form fieldset,
+.request-form fieldset {
+  border: 0;
+  min-inline-size: 0;
+}
+
+.instrument-form legend {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
 .instrument-form label {
   font-size: 0.82rem;
   letter-spacing: 0.08em;
@@ -1251,7 +1264,7 @@ a {
   gap: 0.5rem;
 }
 
-.instrument-form input,
+.instrument-form input:not([type="radio"]),
 .request-form input:not([type="radio"]):not([type="checkbox"]),
 .request-form textarea {
   width: 100%;

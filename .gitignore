@@ -11,7 +11,10 @@ dist/
 .vscode/
 .idea/
 
-# Local helpers, not part of the published site
+# Lead archive written by the backend
+data/*.jsonl
+data/*.json
+!data/.gitkeep
 start.cmd
 scripts/
 public/preview/

@@ -93,11 +93,22 @@ export const site: SiteContent = {
     lead: "Коротко. Без анкеты. Можно начать с диагностики или сразу с консультации.",
     nameLabel: "Имя",
     contactLabel: "Как с вами связаться",
-    contactHint: "Телефон, Telegram или почта",
+    contactHint: "Telegram, MAX или почта",
+    channelLabel: "Куда удобнее ответить",
+    channelHints: {
+      telegram: "@username в Telegram",
+      max: "имя или номер в MAX",
+      email: "электронная почта",
+    },
     intentLabel: "Что выбираете",
     messageLabel: "Если хотите сказать несколько слов",
     submit: "Отправить",
     success: "Заявка принята. Я свяжусь с вами.",
+    channels: [
+      { value: "telegram", label: "Telegram" },
+      { value: "max", label: "MAX" },
+      { value: "email", label: "Почта" },
+    ],
     intents: [
       { value: "diagnosis", label: "Диагностика сценария" },
       { value: "consultation", label: "Консультация" },

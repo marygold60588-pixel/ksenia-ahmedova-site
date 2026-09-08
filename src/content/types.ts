@@ -1,5 +1,7 @@
 export type LeadIntent = "diagnosis" | "consultation" | "gift";
 
+export type ContactChannel = "telegram" | "max" | "email";
+
 export type ProductStatus = "active" | "hidden" | "coming_soon";
 
 export type ProductKind = "digital" | "consultation";
@@ -102,10 +104,13 @@ export type SiteContent = {
     nameLabel: string;
     contactLabel: string;
     contactHint: string;
+    channelLabel: string;
+    channelHints: Record<ContactChannel, string>;
     intentLabel: string;
     messageLabel: string;
     submit: string;
     success: string;
+    channels: { value: ContactChannel; label: string }[];
     intents: { value: LeadIntent; label: string }[];
   };
   footer: {

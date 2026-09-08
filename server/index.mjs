@@ -7,9 +7,12 @@ import { lookup } from "node:dns/promises";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createReadStream } from "node:fs";
+import { maxConfigured, sendMax } from "./max.mjs";
+import { emailConfigured, looksLikeEmail, sendOwnerEmail, sendVisitorEmail } from "./email.mjs";
+import { formatLeadText } from "./lead-text.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "telegram-proxy";
+const BUILD_ID = "multichannel-leads";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -17,7 +20,6 @@ const TELEGRAM_TIMEOUT_MS = 15000;
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
 const DIST = path.resolve(process.cwd(), "dist");
-const SITE_URL = "https://ksenia-ahmedova.ru/";
 const BODY_LIMIT = 8192;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX = 5;
@@ -33,6 +35,8 @@ const INTENTS = {
 };
 
 const SOURCES = new Set(["site-form", "paper-card", "agent"]);
+const CHANNELS = new Set(["telegram", "max", "email"]);
+const LEADS_FILE = path.resolve(process.cwd(), "data", "leads.jsonl");
 
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -182,29 +186,45 @@ function parseLead(raw) {
         ? sanitize(data.message, 2000)
         : null;
   const source = typeof data.source === "string" && SOURCES.has(data.source) ? data.source : "";
+  const channelKey = typeof data.contactChannel === "string" ? data.contactChannel.trim() : "";
+  const contactChannel = CHANNELS.has(channelKey) ? channelKey : "";
+  const createdAt =
+    typeof data.createdAt === "string" && data.createdAt.trim() && !Number.isNaN(Date.parse(data.createdAt))
+      ? new Date(data.createdAt).toISOString()
+      : new Date().toISOString();
 
   if (!name) return { lead: null, reason: "name" };
   if (!contact) return { lead: null, reason: "contact" };
   if (!intent) return { lead: null, reason: "intent" };
   if (message === null) return { lead: null, reason: "message" };
   if (!source) return { lead: null, reason: "source" };
+  if (!contactChannel) return { lead: null, reason: "contactChannel" };
+  if (contactChannel === "email" && !looksLikeEmail(contact)) {
+    return { lead: null, reason: "contact_email" };
+  }
 
-  return { lead: { name, contact, intent, message, source }, reason: null };
+  return { lead: { name, contact, intent, message, source, contactChannel, createdAt }, reason: null };
 }
 
-function formatTelegramText(lead) {
-  const when = new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
-  return [
-    "Новая заявка с сайта",
-    "",
-    `Имя: ${lead.name}`,
-    `Контакт: ${lead.contact}`,
-    `Запрос: ${INTENTS[lead.intent]}`,
-    `Сообщение: ${lead.message || "не указано"}`,
-    "",
-    `Страница: ${SITE_URL}`,
-    `Дата/время: ${when}`,
-  ].join("\n");
+async function saveLead(lead) {
+  const record = {
+    id: crypto.randomUUID(),
+    name: lead.name,
+    contact: lead.contact,
+    message: lead.message,
+    contactChannel: lead.contactChannel,
+    intent: lead.intent,
+    source: lead.source,
+    createdAt: lead.createdAt || new Date().toISOString(),
+  };
+
+  try {
+    await fs.mkdir(path.dirname(LEADS_FILE), { recursive: true });
+    await fs.appendFile(LEADS_FILE, `${JSON.stringify(record)}\n`, "utf8");
+    return { ok: true, id: record.id };
+  } catch (error) {
+    return { ok: false, reason: "save_failed", errorCode: networkErrorCode(error) };
+  }
 }
 
 function telegramCredentials() {
@@ -624,6 +644,247 @@ async function sendTelegramMessage(text) {
   }
 }
 
+async function sendTelegram(lead) {
+  return sendTelegramMessage(formatLeadText(lead));
+}
+
+function unwrapSettled(result, fallback) {
+  return result.status === "fulfilled" ? result.value : fallback;
+}
+
+async function notifyOwner(lead) {
+  const [telegramResult, maxResult, emailResult] = await Promise.allSettled([
+    sendTelegram(lead),
+    sendMax(lead),
+    sendOwnerEmail(lead),
+  ]);
+  return {
+    telegram: unwrapSettled(telegramResult, { ok: false, reason: "telegram_network", errorCode: "unexpected" }),
+    max: unwrapSettled(maxResult, { ok: false, reason: "max_network", errorCode: "unexpected" }),
+    email: unwrapSettled(emailResult, { ok: false, reason: "email_network", errorCode: "unexpected" }),
+  };
+}
+
+async function sendVisitorChannel(lead) {
+  if (lead.contactChannel === "email") {
+    return sendVisitorEmail(lead);
+  }
+  if (lead.contactChannel === "telegram") {
+    return { ok: true, reason: "recorded", channel: "telegram" };
+  }
+  if (lead.contactChannel === "max") {
+    return { ok: true, reason: "recorded", channel: "max" };
+  }
+  return { ok: false, reason: "unknown_channel" };
+}
+
+async function sendLeadNotification(lead) {
+  const [visitorResult, ownerResult] = await Promise.allSettled([
+    sendVisitorChannel(lead),
+    notifyOwner(lead),
+  ]);
+  const visitor = unwrapSettled(visitorResult, { ok: false, reason: "visitor_failed" });
+  const owner = unwrapSettled(ownerResult, {
+    telegram: { ok: false, reason: "telegram_network", errorCode: "unexpected" },
+    max: { ok: false, reason: "max_network", errorCode: "unexpected" },
+    email: { ok: false, reason: "email_network", errorCode: "unexpected" },
+  });
+  return { visitor, owner };
+}
+
+function ownerNotificationOk(owner) {
+  return Boolean(owner.telegram?.ok || owner.max?.ok || owner.email?.ok);
+}
+
+function logTelegramResult(telegram) {
+  const proxyMeta = telegramProxyMeta();
+  if (telegram.ok) {
+    console.info("[leads] telegram success", { httpStatus: 200, proxyConfigured: proxyMeta.configured });
+    return;
+  }
+  if (telegram.reason === "not_configured") {
+    console.error("[leads] telegram error", { reason: "not_configured" });
+    return;
+  }
+  if (telegram.reason === "proxy_invalid") {
+    console.error("[leads] telegram error", {
+      reason: "proxy_invalid",
+      errorCode: telegram.errorCode,
+      hint: telegram.hint,
+    });
+    return;
+  }
+  if (telegram.reason === "telegram_timeout") {
+    console.error("[leads] telegram timeout", {
+      reason: "telegram_timeout",
+      errorCode: telegram.errorCode,
+      proxyConfigured: proxyMeta.configured,
+      proxyProtocol: proxyMeta.protocol,
+      hint: telegram.hint,
+    });
+    return;
+  }
+  if (telegram.reason === "telegram_network") {
+    console.error("[leads] telegram error", {
+      reason: "telegram_network",
+      errorCode: telegram.errorCode,
+      proxyConfigured: proxyMeta.configured,
+    });
+    return;
+  }
+  console.error("[leads] telegram error", {
+    reason: "telegram_rejected",
+    httpStatus: telegram.telegramStatus,
+    errorCode: telegram.errorCode,
+    description: telegram.description,
+  });
+}
+
+function logMaxResult(max) {
+  if (max.ok) {
+    console.info("[leads] max success", { httpStatus: 200 });
+    return;
+  }
+  if (max.reason === "not_configured") {
+    console.info("[leads] max skipped", { reason: "not_configured" });
+    return;
+  }
+  if (max.reason === "max_timeout") {
+    console.error("[leads] max timeout", {
+      reason: "max_timeout",
+      errorCode: max.errorCode,
+      hint: max.hint,
+    });
+    return;
+  }
+  if (max.reason === "max_network") {
+    console.error("[leads] max error", { reason: "max_network", errorCode: max.errorCode });
+    return;
+  }
+  console.error("[leads] max error", {
+    reason: "max_rejected",
+    httpStatus: max.maxStatus,
+    description: max.description,
+  });
+}
+
+function logEmailResult(email, role) {
+  const prefix = role === "visitor" ? "[leads] visitor email" : "[leads] email";
+  if (email.reason === "recorded") {
+    console.info("[leads] visitor channel recorded", { channel: email.channel });
+    return;
+  }
+  if (email.ok) {
+    console.info(`${prefix} success`, { httpStatus: 200 });
+    return;
+  }
+  if (email.reason === "not_configured") {
+    console.info(`${prefix} skipped`, { reason: "not_configured" });
+    return;
+  }
+  if (email.reason === "email_timeout") {
+    console.error(`${prefix} timeout`, { reason: "email_timeout", errorCode: email.errorCode });
+    return;
+  }
+  if (email.reason === "invalid_visitor_email") {
+    console.warn(`${prefix} skipped`, { reason: "invalid_visitor_email" });
+    return;
+  }
+  console.error(`${prefix} error`, {
+    reason: email.reason,
+    errorCode: email.errorCode,
+    smtpCode: email.smtpCode,
+  });
+}
+
+function sendEmailFailure(req, res, email) {
+  if (email.reason === "not_configured") {
+    sendJson(req, res, 500, { ok: false, stage: "email_not_configured" });
+    return;
+  }
+  if (email.reason === "email_timeout") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "email_timeout",
+      errorCode: email.errorCode || "ETIMEDOUT",
+    });
+    return;
+  }
+  sendJson(req, res, 502, {
+    ok: false,
+    stage: email.reason === "email_rejected" ? "email_rejected" : "email_network",
+    errorCode: email.errorCode || null,
+  });
+}
+
+function sendTelegramFailure(req, res, telegram) {
+  if (telegram.reason === "not_configured") {
+    sendJson(req, res, 500, { ok: false, stage: "telegram_not_configured" });
+    return;
+  }
+  if (telegram.reason === "proxy_invalid") {
+    sendJson(req, res, 500, {
+      ok: false,
+      stage: "telegram_proxy_invalid",
+      hint: telegram.hint || null,
+    });
+    return;
+  }
+  if (telegram.reason === "telegram_timeout") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "telegram_timeout",
+      errorCode: telegram.errorCode || "ETIMEDOUT",
+      hint: telegram.hint || null,
+    });
+    return;
+  }
+  if (telegram.reason === "telegram_network") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "telegram_network",
+      errorCode: telegram.errorCode || null,
+    });
+    return;
+  }
+  sendJson(req, res, 502, {
+    ok: false,
+    stage: "telegram_rejected",
+    telegramStatus: telegram.telegramStatus || null,
+    description: telegram.description || null,
+  });
+}
+
+function sendMaxFailure(req, res, max) {
+  if (max.reason === "not_configured") {
+    sendJson(req, res, 500, { ok: false, stage: "max_not_configured" });
+    return;
+  }
+  if (max.reason === "max_timeout") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "max_timeout",
+      errorCode: max.errorCode || "ETIMEDOUT",
+      hint: max.hint || null,
+    });
+    return;
+  }
+  if (max.reason === "max_network") {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "max_network",
+      errorCode: max.errorCode || null,
+    });
+    return;
+  }
+  sendJson(req, res, 502, {
+    ok: false,
+    stage: "max_rejected",
+    maxStatus: max.maxStatus || null,
+    description: max.description || null,
+  });
+}
+
 function safeFilePath(urlPath) {
   let decoded;
   try {
@@ -687,82 +948,59 @@ async function handleLeads(req, res) {
   }
 
   const lead = parsed.lead;
-  console.info("[leads] validation ok", { source: lead.source, intent: lead.intent });
-  console.info("[leads] telegram attempt");
+  console.info("[leads] validation ok", {
+    source: lead.source,
+    intent: lead.intent,
+    contactChannel: lead.contactChannel,
+  });
 
-  const telegram = await sendTelegramMessage(formatTelegramText(lead));
-  const proxyMeta = telegramProxyMeta();
-  if (telegram.ok) {
-    console.info("[leads] telegram success", { httpStatus: 200, proxyConfigured: proxyMeta.configured });
-  } else if (telegram.reason === "not_configured") {
-    console.error("[leads] telegram error", { reason: "not_configured" });
-  } else if (telegram.reason === "proxy_invalid") {
-    console.error("[leads] telegram error", {
-      reason: "proxy_invalid",
-      errorCode: telegram.errorCode,
-      hint: telegram.hint,
-    });
-  } else if (telegram.reason === "telegram_timeout") {
-    console.error("[leads] telegram timeout", {
-      reason: "telegram_timeout",
-      errorCode: telegram.errorCode,
-      proxyConfigured: proxyMeta.configured,
-      proxyProtocol: proxyMeta.protocol,
-      hint: telegram.hint,
-    });
-  } else if (telegram.reason === "telegram_network") {
-    console.error("[leads] telegram error", {
-      reason: "telegram_network",
-      errorCode: telegram.errorCode,
-      proxyConfigured: proxyMeta.configured,
-    });
+  const saved = await saveLead(lead);
+  if (saved.ok) {
+    console.info("[leads] saved", { id: saved.id });
   } else {
-    console.error("[leads] telegram error", {
-      reason: "telegram_rejected",
-      httpStatus: telegram.telegramStatus,
-      errorCode: telegram.errorCode,
-      description: telegram.description,
-    });
+    console.error("[leads] save failed", { errorCode: saved.errorCode || saved.reason });
   }
 
-  if (telegram.ok) {
+  console.info("[leads] notify attempt");
+  const { visitor, owner } = await sendLeadNotification(lead);
+  logTelegramResult(owner.telegram);
+  logMaxResult(owner.max);
+  logEmailResult(owner.email, "owner");
+  logEmailResult(visitor, "visitor");
+
+  if (saved.ok || ownerNotificationOk(owner)) {
     sendJson(req, res, 200, { ok: true });
     return;
   }
-  if (telegram.reason === "not_configured") {
-    sendJson(req, res, 500, { ok: false, stage: "telegram_not_configured" });
+
+  if (owner.max.reason === "not_configured" && owner.email.reason === "not_configured") {
+    sendTelegramFailure(req, res, owner.telegram);
     return;
   }
-  if (telegram.reason === "proxy_invalid") {
-    sendJson(req, res, 500, {
-      ok: false,
-      stage: "telegram_proxy_invalid",
-      hint: telegram.hint || null,
-    });
+  if (owner.telegram.reason === "not_configured" && owner.email.reason === "not_configured") {
+    sendMaxFailure(req, res, owner.max);
     return;
   }
-  if (telegram.reason === "telegram_timeout") {
-    sendJson(req, res, 502, {
-      ok: false,
-      stage: "telegram_timeout",
-      errorCode: telegram.errorCode || "ETIMEDOUT",
-      hint: telegram.hint || null,
-    });
+  if (owner.telegram.reason === "not_configured" && owner.max.reason === "not_configured") {
+    sendEmailFailure(req, res, owner.email);
     return;
   }
-  if (telegram.reason === "telegram_network") {
-    sendJson(req, res, 502, {
-      ok: false,
-      stage: "telegram_network",
-      errorCode: telegram.errorCode || null,
-    });
-    return;
-  }
+
   sendJson(req, res, 502, {
     ok: false,
-    stage: "telegram_rejected",
-    telegramStatus: telegram.telegramStatus || null,
-    description: telegram.description || null,
+    stage: "notification_failed",
+    telegram: {
+      reason: owner.telegram.reason || null,
+      errorCode: owner.telegram.errorCode || null,
+    },
+    max: {
+      reason: owner.max.reason || null,
+      errorCode: owner.max.errorCode || null,
+    },
+    email: {
+      reason: owner.email.reason || null,
+      errorCode: owner.email.errorCode || null,
+    },
   });
 }
 
@@ -900,4 +1138,6 @@ server.listen(PORT, HOST, () => {
   } else {
     console.info("[telegram] proxy disabled");
   }
+  console.info("[max] " + (maxConfigured() ? "configured" : "not configured"));
+  console.info("[email] " + (emailConfigured() ? "configured" : "not configured"));
 });

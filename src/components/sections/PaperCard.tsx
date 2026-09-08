@@ -2,12 +2,14 @@ import { useRef, useState, type FormEvent, type PointerEvent } from "react";
 import ScrollReveal from "@/components/bits/ScrollReveal";
 import BookReveal from "@/components/viz/BookReveal";
 import { site } from "@/content";
+import type { ContactChannel } from "@/content/types";
 import { submitLead } from "@/lib/leads";
 
 export default function PaperCard() {
-  const { gift } = site;
+  const { form, gift } = site;
   const [open, setOpen] = useState(false);
   const [contact, setContact] = useState("");
+  const [channel, setChannel] = useState<ContactChannel>("email");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState(false);
@@ -22,6 +24,7 @@ export default function PaperCard() {
       name: "Гайд",
       contact: contact.trim(),
       intent: "gift",
+      contactChannel: channel,
       source: "paper-card",
     });
     setSending(false);
@@ -93,14 +96,31 @@ export default function PaperCard() {
               <p className="instrument-done">Материал можно будет получить на указанный контакт.</p>
             ) : (
               <form className="instrument-form" onSubmit={sendMaterial} onClick={(event) => event.stopPropagation()}>
-                <label htmlFor="instrument-contact">Куда прислать</label>
+                <fieldset>
+                  <legend>Куда прислать</legend>
+                  <div className="intent-row">
+                    {form.channels.map((item) => (
+                      <label key={item.value} className={channel === item.value ? "is-on" : ""}>
+                        <input
+                          type="radio"
+                          name="instrument-channel"
+                          value={item.value}
+                          checked={channel === item.value}
+                          onChange={() => setChannel(item.value)}
+                        />
+                        {item.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <label htmlFor="instrument-contact">{form.channelHints[channel]}</label>
                 <div className="instrument-form-row">
                   <input
                     id="instrument-contact"
-                    type="text"
+                    type={channel === "email" ? "email" : "text"}
                     value={contact}
                     onChange={(event) => setContact(event.target.value)}
-                    placeholder="Почта или Telegram"
+                    placeholder={form.channelHints[channel]}
                     required
                     disabled={sending}
                   />
