@@ -187,7 +187,7 @@ function parseLead(raw) {
         : null;
   const source = typeof data.source === "string" && SOURCES.has(data.source) ? data.source : "";
   const channelKey = typeof data.contactChannel === "string" ? data.contactChannel.trim() : "";
-  const contactChannel = CHANNELS.has(channelKey) ? channelKey : "";
+  const contactChannel = CHANNELS.has(channelKey) ? channelKey : "не указан";
   const createdAt =
     typeof data.createdAt === "string" && data.createdAt.trim() && !Number.isNaN(Date.parse(data.createdAt))
       ? new Date(data.createdAt).toISOString()
@@ -198,7 +198,6 @@ function parseLead(raw) {
   if (!intent) return { lead: null, reason: "intent" };
   if (message === null) return { lead: null, reason: "message" };
   if (!source) return { lead: null, reason: "source" };
-  if (!contactChannel) return { lead: null, reason: "contactChannel" };
   if (contactChannel === "email" && !looksLikeEmail(contact)) {
     return { lead: null, reason: "contact_email" };
   }
