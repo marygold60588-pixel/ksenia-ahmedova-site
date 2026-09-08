@@ -227,11 +227,15 @@ async function saveLead(lead) {
   }
 }
 
-function telegramCredentials() {
-  const token = typeof process.env.TELEGRAM_BOT_TOKEN === "string" ? process.env.TELEGRAM_BOT_TOKEN.trim() : "";
-  const rawChatId = typeof process.env.TELEGRAM_CHAT_ID === "string" ? process.env.TELEGRAM_CHAT_ID.trim() : "";
-  const chatId = /^-?\d+$/.test(rawChatId) ? Number(rawChatId) : rawChatId;
-  return { token, chatId };
+function telegramRelayEnv() {
+  const url = typeof process.env.TELEGRAM_RELAY_URL === "string" ? process.env.TELEGRAM_RELAY_URL.trim() : "";
+  const secret = typeof process.env.TELEGRAM_RELAY_SECRET === "string" ? process.env.TELEGRAM_RELAY_SECRET.trim() : "";
+  return { url, secret };
+}
+
+function telegramRelayConfigured() {
+  const { url, secret } = telegramRelayEnv();
+  return Boolean(url && secret);
 }
 
 function telegramProxyRaw() {
@@ -548,40 +552,41 @@ function telegramHttpsOptions(extra) {
   return options;
 }
 
-function postTelegramMessage(token, body) {
-  const payload = JSON.stringify(body);
+function postTelegramRelay(relayUrl, secret, text) {
+  const payload = JSON.stringify({ text });
+  const isHttps = relayUrl.protocol === "https:";
+  const path = `${relayUrl.pathname || "/"}${relayUrl.search}`;
   return new Promise((resolve, reject) => {
-    let requestOptions;
-    try {
-      requestOptions = telegramHttpsOptions({
-        path: `/bot${token}/sendMessage`,
+    const request = (isHttps ? https : http).request(
+      {
+        hostname: relayUrl.hostname,
+        port: relayUrl.port || (isHttps ? 443 : 80),
+        path,
         method: "POST",
+        family: 4,
         headers: {
+          Authorization: `Bearer ${secret}`,
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(payload),
         },
-      });
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
-    const request = https.request(requestOptions, (response) => {
-      const chunks = [];
-      response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => {
-        const text = Buffer.concat(chunks).toString("utf8");
-        let json = null;
-        try {
-          json = JSON.parse(text);
-        } catch {
-          json = null;
-        }
-        resolve({ status: response.statusCode || 0, payload: json });
-      });
-    });
+      },
+      (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf8");
+          let json = null;
+          try {
+            json = JSON.parse(raw);
+          } catch {
+            json = null;
+          }
+          resolve({ status: response.statusCode || 0, payload: json });
+        });
+      },
+    );
     request.setTimeout(TELEGRAM_TIMEOUT_MS, () => {
-      request.destroy(timeoutError());
+      request.destroy(timeoutError("Telegram relay timeout"));
     });
     request.on("error", reject);
     request.write(payload);
@@ -590,56 +595,45 @@ function postTelegramMessage(token, body) {
 }
 
 async function sendTelegramMessage(text) {
-  const { token, chatId } = telegramCredentials();
-  if (!token || chatId === "" || chatId == null) {
+  const { url: urlRaw, secret } = telegramRelayEnv();
+  if (!urlRaw || !secret) {
     return { ok: false, status: 500, reason: "not_configured" };
   }
 
+  let relayUrl;
   try {
-    const response = await postTelegramMessage(token, {
-      chat_id: chatId,
-      text,
-      disable_web_page_preview: true,
-    });
+    relayUrl = new URL(urlRaw);
+  } catch {
+    return { ok: false, status: 500, reason: "relay_invalid_url" };
+  }
+
+  console.info("[leads] telegram relay attempt");
+
+  try {
+    const response = await postTelegramRelay(relayUrl, secret, text);
+    const httpStatus = response.status;
     const payload = response.payload;
 
-    if (response.status >= 200 && response.status < 300 && payload && payload.ok === true) {
-      return { ok: true, status: 200 };
+    if (httpStatus >= 200 && httpStatus < 300 && payload && payload.ok === true) {
+      return { ok: true, status: 200, telegramStatus: httpStatus };
     }
 
     return {
       ok: false,
       status: 502,
       reason: "telegram_rejected",
-      telegramStatus: response.status,
-      errorCode: payload && typeof payload.error_code === "number" ? payload.error_code : undefined,
-      description:
-        payload && typeof payload.description === "string" ? payload.description.slice(0, 200) : undefined,
+      telegramStatus: httpStatus,
     };
   } catch (error) {
     const errorCode = networkErrorCode(error);
-    const proxyConfigured = Boolean(telegramProxyRaw());
-
-    if (errorCode === "EPROXY") {
-      return {
-        ok: false,
-        status: 500,
-        reason: "proxy_invalid",
-        errorCode,
-        hint: "TELEGRAM_PROXY is set but invalid. Use http://, https://, socks5://, or socks4://.",
-      };
-    }
-
     if (isTelegramTimeoutError(error)) {
       return {
         ok: false,
         status: 502,
         reason: "telegram_timeout",
         errorCode: errorCode || "ETIMEDOUT",
-        hint: telegramTimeoutHint(proxyConfigured),
       };
     }
-
     return { ok: false, status: 502, reason: "telegram_network", errorCode };
   }
 }
@@ -697,46 +691,35 @@ function ownerNotificationOk(owner) {
 }
 
 function logTelegramResult(telegram) {
-  const proxyMeta = telegramProxyMeta();
   if (telegram.ok) {
-    console.info("[leads] telegram success", { httpStatus: 200, proxyConfigured: proxyMeta.configured });
+    console.info("[leads] telegram relay success", { httpStatus: telegram.telegramStatus || 200 });
     return;
   }
   if (telegram.reason === "not_configured") {
-    console.error("[leads] telegram error", { reason: "not_configured" });
+    console.error("[leads] telegram relay error", { reason: "not_configured" });
     return;
   }
-  if (telegram.reason === "proxy_invalid") {
-    console.error("[leads] telegram error", {
-      reason: "proxy_invalid",
-      errorCode: telegram.errorCode,
-      hint: telegram.hint,
-    });
+  if (telegram.reason === "relay_invalid_url") {
+    console.error("[leads] telegram relay error", { reason: "relay_invalid_url" });
     return;
   }
   if (telegram.reason === "telegram_timeout") {
-    console.error("[leads] telegram timeout", {
+    console.error("[leads] telegram relay error", {
       reason: "telegram_timeout",
-      errorCode: telegram.errorCode,
-      proxyConfigured: proxyMeta.configured,
-      proxyProtocol: proxyMeta.protocol,
-      hint: telegram.hint,
+      errorCode: telegram.errorCode || "ETIMEDOUT",
     });
     return;
   }
   if (telegram.reason === "telegram_network") {
-    console.error("[leads] telegram error", {
+    console.error("[leads] telegram relay error", {
       reason: "telegram_network",
       errorCode: telegram.errorCode,
-      proxyConfigured: proxyMeta.configured,
     });
     return;
   }
-  console.error("[leads] telegram error", {
-    reason: "telegram_rejected",
+  console.error("[leads] telegram relay error", {
+    reason: telegram.reason || "telegram_rejected",
     httpStatus: telegram.telegramStatus,
-    errorCode: telegram.errorCode,
-    description: telegram.description,
   });
 }
 
@@ -820,6 +803,10 @@ function sendEmailFailure(req, res, email) {
 function sendTelegramFailure(req, res, telegram) {
   if (telegram.reason === "not_configured") {
     sendJson(req, res, 500, { ok: false, stage: "telegram_not_configured" });
+    return;
+  }
+  if (telegram.reason === "relay_invalid_url") {
+    sendJson(req, res, 500, { ok: false, stage: "telegram_relay_invalid_url" });
     return;
   }
   if (telegram.reason === "proxy_invalid") {
@@ -1131,13 +1118,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  const proxy = telegramProxyMeta();
   console.log(`Server listening on ${HOST}:${PORT}`);
-  if (proxy.configured) {
-    console.info("[telegram] proxy enabled", { protocol: proxy.protocol });
-  } else {
-    console.info("[telegram] proxy disabled");
-  }
+  console.info("[telegram] relay " + (telegramRelayConfigured() ? "configured" : "not configured"));
   console.info("[max] " + (maxConfigured() ? "configured" : "not configured"));
   console.info("[email] " + (emailConfigured() ? "configured" : "not configured"));
 });
