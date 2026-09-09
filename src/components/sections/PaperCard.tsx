@@ -12,12 +12,19 @@ export default function PaperCard() {
   const [channel, setChannel] = useState<ContactChannel>("email");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const gesture = useRef({ x: 0, y: 0, dragged: false });
 
   const sendMaterial = async (event: FormEvent) => {
     event.preventDefault();
     if (sending || sent || !contact.trim()) return;
+    if (!consent) {
+      setConsentError(true);
+      return;
+    }
+    setConsentError(false);
     setSubmitError(false);
     setSending(true);
     const result = await submitLead({
@@ -127,6 +134,45 @@ export default function PaperCard() {
                   <button type="submit" disabled={sending}>
                     {gift.cta}
                   </button>
+                </div>
+                <div className="request-consent">
+                  <label className="request-consent-label" htmlFor="instrument-consent">
+                    <input
+                      id="instrument-consent"
+                      type="checkbox"
+                      checked={consent}
+                      aria-invalid={consentError}
+                      aria-describedby={consentError ? "instrument-consent-error" : undefined}
+                      onChange={(event) => {
+                        setConsent(event.target.checked);
+                        if (event.target.checked) setConsentError(false);
+                      }}
+                    />
+                    <span className="request-consent-box" aria-hidden="true" />
+                    <span className="request-consent-text">
+                      Я даю{" "}
+                      <a
+                        className="request-privacy-link"
+                        href="/legal/consent"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        согласие на обработку персональных данных
+                      </a>{" "}
+                      и ознакомлен(а) с{" "}
+                      <a
+                        className="request-privacy-link"
+                        href="/legal/privacy"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        Политикой конфиденциальности
+                      </a>
+                    </span>
+                  </label>
+                  {consentError ? (
+                    <p className="request-consent-error" id="instrument-consent-error" role="alert">
+                      Чтобы отправить заявку, отметьте согласие на обработку персональных данных.
+                    </p>
+                  ) : null}
                 </div>
                 {submitError ? (
                   <p className="instrument-note" role="alert">

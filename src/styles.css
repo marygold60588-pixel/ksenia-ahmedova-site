@@ -1264,7 +1264,7 @@ a {
   gap: 0.5rem;
 }
 
-.instrument-form input:not([type="radio"]),
+.instrument-form input:not([type="radio"]):not([type="checkbox"]),
 .request-form input:not([type="radio"]):not([type="checkbox"]),
 .request-form textarea {
   width: 100%;
@@ -1355,7 +1355,8 @@ a {
   gap: 0.4rem;
 }
 
-.request-form .request-consent-label {
+.request-form .request-consent-label,
+.instrument-form .request-consent-label {
   display: flex;
   align-items: flex-start;
   gap: 0.7rem;
@@ -1446,6 +1447,98 @@ a {
   border-top: 1px solid var(--line);
   font-size: 0.88rem;
   color: var(--ink-soft);
+}
+
+.legal-page {
+  min-height: calc(100svh - 5.5rem);
+  padding: 2.8rem var(--pad) 4.5rem;
+  max-width: 46rem;
+}
+
+.legal-back {
+  display: inline-block;
+  margin-bottom: 2.4rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.legal-back:hover {
+  color: var(--ink);
+}
+
+.legal-title {
+  font-family: var(--serif);
+  font-size: clamp(2.05rem, 4.6vw, 3.1rem);
+  font-weight: 400;
+  line-height: 1.14;
+  margin: 0.55rem 0 0.85rem;
+}
+
+.legal-date {
+  margin: 0 0 2.2rem;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.legal-body {
+  max-width: 40rem;
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.legal-section + .legal-section {
+  margin-top: 2.15rem;
+}
+
+.legal-section h2 {
+  font-family: var(--serif);
+  font-size: 1.32rem;
+  font-weight: 400;
+  line-height: 1.3;
+  margin: 0 0 0.85rem;
+}
+
+.legal-body p,
+.legal-body li {
+  color: var(--ink-soft);
+}
+
+.legal-body p {
+  margin: 0 0 0.85rem;
+}
+
+.legal-body p:last-child,
+.legal-body ul:last-child {
+  margin-bottom: 0;
+}
+
+.legal-body ul {
+  margin: 0 0 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.legal-body li {
+  position: relative;
+  padding-left: 1.15rem;
+  margin: 0 0 0.38rem;
+}
+
+.legal-body li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+}
+
+.legal-body a {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.legal-body + .legal-back {
+  margin-top: 2.4rem;
+  margin-bottom: 0;
 }
 
 .footer-name {

@@ -141,13 +141,21 @@ export default function Request() {
                 />
                 <span className="request-consent-box" aria-hidden="true" />
                 <span className="request-consent-text">
-                  Я согласна на обработку персональных данных и принимаю{" "}
+                  Я даю{" "}
                   <a
                     className="request-privacy-link"
-                    href="#request"
+                    href="/legal/consent"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    Политику конфиденциальности
+                    согласие на обработку персональных данных
+                  </a>{" "}
+                  и ознакомлен(а) с{" "}
+                  <a
+                    className="request-privacy-link"
+                    href="/legal/privacy"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    Политикой конфиденциальности
                   </a>
                 </span>
               </label>
