@@ -1,4 +1,4 @@
-const ARTICLE_SEO = {
+const PAGE_SEO = {
   "/strah-otverzheniya": {
     title: "Страх отвержения: почему отказ ощущается как «меня нет»",
     description:
@@ -28,6 +28,26 @@ const ARTICLE_SEO = {
       publisher: {
         "@id": "https://ksenia-ahmedova.ru/#person",
       },
+    },
+  },
+  "/kogda-govoryat-net": {
+    title: "Когда мне говорят «нет»: карта реакции на отказ",
+    description:
+      "Короткий рабочий материал Ксении Ахмедовой: как отличить факт отказа от переживания отвержения и заметить свой автоматизм — замереть, угодить или исчезнуть.",
+    canonical: "https://ksenia-ahmedova.ru/kogda-govoryat-net",
+    ogType: "website",
+    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "Когда мне говорят «нет»",
+      headline: "Когда мне говорят «нет»: карта реакции на отказ",
+      description:
+        "Короткий рабочий материал: как отличить факт отказа от переживания отвержения и заметить свой автоматизм.",
+      inLanguage: "ru",
+      url: "https://ksenia-ahmedova.ru/kogda-govoryat-net",
+      isPartOf: { "@id": "https://ksenia-ahmedova.ru/#website" },
+      author: { "@id": "https://ksenia-ahmedova.ru/#person" },
     },
   },
 };
@@ -76,7 +96,7 @@ export function normalizePathname(urlPath) {
 
 export function applyRouteSeo(html, urlPath) {
   const pathname = normalizePathname(urlPath);
-  const seo = ARTICLE_SEO[pathname];
+  const seo = PAGE_SEO[pathname];
   if (!seo) return html;
 
   let next = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeAttr(seo.title)}</title>`);

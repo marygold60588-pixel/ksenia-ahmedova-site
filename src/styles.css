@@ -440,6 +440,7 @@ a {
   letter-spacing: 0.04em;
   font-size: 0.92rem;
   font-weight: 400;
+  cursor: pointer;
   transition:
     background 0.25s ease,
     color 0.25s ease,
@@ -1356,7 +1357,8 @@ a {
 }
 
 .request-form .request-consent-label,
-.instrument-form .request-consent-label {
+.instrument-form .request-consent-label,
+.magnet-form .request-consent-label {
   display: flex;
   align-items: flex-start;
   gap: 0.7rem;
@@ -1700,6 +1702,161 @@ a {
   color: var(--sage);
 }
 
+.article-next {
+  margin: 3.4rem 0 0;
+  padding: 1.8rem 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.article-next .kicker {
+  margin-bottom: 0.85rem;
+}
+
+.article-next h2 {
+  margin-top: 0;
+}
+
+.article-next-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.article-next-link:hover {
+  color: var(--ink);
+}
+
+.magnet-hero {
+  min-height: auto;
+}
+
+.magnet-automations {
+  display: grid;
+  gap: 1.4rem;
+  margin: 1.6rem 0 2.4rem;
+}
+
+.magnet-automations h3 {
+  margin-top: 0;
+}
+
+.magnet-gate,
+.magnet-work {
+  margin-top: 2.4rem;
+  padding-top: 0.2rem;
+}
+
+.magnet-form {
+  display: grid;
+  gap: 1.15rem;
+  margin-top: 1.4rem;
+}
+
+.magnet-form label,
+.magnet-form legend {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.magnet-form input:not([type="radio"]):not([type="checkbox"]),
+.magnet-field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.55rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--ink);
+}
+
+.magnet-field textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.55;
+}
+
+.magnet-submit {
+  justify-self: start;
+  margin-top: 0.3rem;
+}
+
+.magnet-error {
+  color: var(--ink);
+}
+
+.magnet-open-note {
+  font-size: 0.92rem;
+  color: var(--gold);
+}
+
+.magnet-field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 1.4rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.magnet-field span,
+.magnet-field p {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--sage);
+}
+
+.magnet-defenses {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.magnet-defenses label {
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.magnet-defenses label.is-on {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+
+.magnet-defenses input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.magnet-print {
+  margin: 0.6rem 0 1.8rem;
+}
+
+.magnet-close {
+  font-family: var(--serif);
+  font-size: 1.18rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
 .article-page .site-footer {
   position: relative;
   z-index: 1;
@@ -1897,6 +2054,48 @@ a {
 
   .article-emphasis {
     font-size: 1.16rem;
+  }
+
+  .magnet-submit,
+  .magnet-print {
+    min-height: 3rem;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media print {
+  .site-noise,
+  .article-top,
+  .magnet-gate,
+  .magnet-print,
+  .article-page .site-footer,
+  .article-next {
+    display: none !important;
+  }
+
+  .article-hero {
+    min-height: auto;
+    padding: 0 0 1.5rem;
+    background: none;
+    color: #111;
+  }
+
+  .article-lead,
+  .article-byline,
+  .kicker-light {
+    color: #333;
+  }
+
+  .article-body {
+    max-width: none;
+    padding: 0;
+    color: #111;
+  }
+
+  .magnet-field textarea {
+    border-color: #ccc;
+    background: transparent;
   }
 }
 
