@@ -10,6 +10,7 @@ import { createReadStream } from "node:fs";
 import { maxConfigured, sendMax } from "./max.mjs";
 import { emailConfigured, looksLikeEmail, sendOwnerEmail, sendVisitorEmail } from "./email.mjs";
 import { formatLeadText } from "./lead-text.mjs";
+import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
 const BUILD_ID = "multichannel-leads";
@@ -896,6 +897,17 @@ async function sendFile(res, filePath) {
   createReadStream(filePath).pipe(res);
 }
 
+async function sendIndexHtml(res, urlPath) {
+  const filePath = path.join(DIST, "index.html");
+  const html = applyRouteSeo(await fs.readFile(filePath, "utf8"), urlPath);
+  const buf = Buffer.from(html, "utf8");
+  res.writeHead(200, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Length": buf.length,
+  });
+  res.end(buf);
+}
+
 async function handleLeads(req, res) {
   if (req.method !== "POST") {
     sendJson(req, res, 405, { ok: false });
@@ -1068,7 +1080,7 @@ async function handleStatic(req, res, urlPath) {
   }
 
   try {
-    await sendFile(res, path.join(DIST, "index.html"));
+    await sendIndexHtml(res, urlPath);
   } catch {
     res.writeHead(404);
     res.end();
