@@ -6,7 +6,7 @@ export type LeadPayload = {
   name: string;
   contact: string;
   intent: LeadIntent;
-  contactChannel: ContactChannel;
+  contactChannel?: ContactChannel;
   message?: string;
   source: "site-form" | "paper-card" | "agent";
   createdAt: string;

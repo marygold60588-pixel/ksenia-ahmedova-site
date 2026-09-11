@@ -8,7 +8,6 @@ import {
   automations,
   kogdaGovoryatNetMeta,
 } from "@/content/lead-magnets/kogda-govoryat-net";
-import type { ContactChannel } from "@/content/types";
 import { submitLead } from "@/lib/leads";
 import { usePageMeta } from "@/lib/page-meta";
 
@@ -58,7 +57,6 @@ export default function KogdaGovoryatNetPage() {
   const [unlocked, setUnlocked] = useState(false);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
-  const [channel, setChannel] = useState<ContactChannel>("email");
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState(false);
   const [sending, setSending] = useState(false);
@@ -97,7 +95,6 @@ export default function KogdaGovoryatNetPage() {
       name: name.trim(),
       contact: contact.trim(),
       intent: "gift",
-      contactChannel: channel,
       message: "Лид-магнит «Когда мне говорят нет»",
       source: "site-form",
     });
@@ -150,118 +147,120 @@ export default function KogdaGovoryatNetPage() {
         </header>
 
         <div className="article-body magnet-body">
-          <p>
-            После статьи часто остаётся узнавание: да, это про меня. И всё ещё неясно, <em>как именно</em> это
-            устроено у вас. Один человек замирает. Другой соглашается. Третий уходит первым.
-          </p>
-          <p>
-            Материал не ставит диагноз и не обещает, что страх исчезнет. Он помогает заметить цепочку, пока она ещё не
-            стала «моим характером».
-          </p>
-
-          <h2>Три частых автоматизма</h2>
-          <p>
-            Это не типы личности. В разные дни может включаться разное. Обычно один способ привычнее остальных.
-          </p>
-          <div className="magnet-automations">
-            {automations.map((item) => (
-              <section key={item.id}>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </section>
-            ))}
-          </div>
-
           {!unlocked ? (
-            <section className="magnet-gate" aria-labelledby="magnet-gate-title">
-              <h2 id="magnet-gate-title">Чтобы разобрать свой случай</h2>
+            <>
               <p>
-                Дальше — ваша карта: поля, которые вы заполняете сами. После короткой заявки материал откроется на этой
-                странице. Это не рассылка курса и не обещание результата.
+                После статьи часто остаётся узнавание: да, это про меня. И всё ещё неясно, <em>как именно</em> это
+                устроено у вас в одной конкретной сцене.
               </p>
-              <form className="magnet-form" onSubmit={onSubmit}>
-                <label>
-                  Имя
-                  <input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    autoComplete="name"
-                    required
-                    disabled={sending}
-                  />
-                </label>
-                <fieldset>
-                  <legend>Куда удобнее ответить</legend>
-                  <div className="intent-row">
-                    {form.channels.map((item) => (
-                      <label key={item.value} className={channel === item.value ? "is-on" : ""}>
-                        <input
-                          type="radio"
-                          name="magnet-channel"
-                          value={item.value}
-                          checked={channel === item.value}
-                          onChange={() => setChannel(item.value)}
-                        />
-                        {item.label}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <label>
-                  {form.channelHints[channel]}
-                  <input
-                    type={channel === "email" ? "email" : "text"}
-                    value={contact}
-                    onChange={(event) => setContact(event.target.value)}
-                    placeholder={form.channelHints[channel]}
-                    required
-                    disabled={sending}
-                  />
-                </label>
-                <div className="request-consent">
-                  <label className="request-consent-label" htmlFor="magnet-consent">
+              <p>
+                Материал не ставит диагноз и не обещает, что страх исчезнет. Он помогает заметить цепочку, пока она ещё не
+                стала «моим характером».
+              </p>
+              <h2>Что вы получите</h2>
+              <ul className="magnet-preview">
+                <li>разбор одного вашего реального отказа — не всей жизни;</li>
+                <li>отличие факта «нет» от мысли «отвергли меня»;</li>
+                <li>наблюдение: мысль, чувство, тело, что вы делаете дальше;</li>
+                <li>один маленький шаг на ближайшую похожую сцену.</li>
+              </ul>
+              <p>
+                Карта откроется на этой странице сразу после заявки. Это не рассылка курса, не видео и не обещание, что
+                материал придёт в мессенджер.
+              </p>
+
+              <section className="magnet-gate" aria-labelledby="magnet-gate-title">
+                <h2 id="magnet-gate-title">Чтобы открыть карту</h2>
+                <form className="magnet-form" onSubmit={onSubmit}>
+                  <label>
+                    Имя
                     <input
-                      id="magnet-consent"
-                      type="checkbox"
-                      checked={consent}
-                      aria-invalid={consentError}
-                      aria-describedby={consentError ? "magnet-consent-error" : undefined}
-                      onChange={(event) => {
-                        setConsent(event.target.checked);
-                        if (event.target.checked) setConsentError(false);
-                      }}
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      autoComplete="name"
+                      required
+                      disabled={sending}
                     />
-                    <span className="request-consent-box" aria-hidden="true" />
-                    <span className="request-consent-text">
-                      Я даю{" "}
-                      <a className="request-privacy-link" href="/legal/consent">
-                        согласие на обработку персональных данных
-                      </a>{" "}
-                      и ознакомлен(а) с{" "}
-                      <a className="request-privacy-link" href="/legal/privacy">
-                        Политикой конфиденциальности
-                      </a>
-                    </span>
                   </label>
-                  {consentError ? (
-                    <p className="request-consent-error" id="magnet-consent-error" role="alert">
-                      Чтобы открыть материал, отметьте согласие на обработку персональных данных.
+                  <label>
+                    {form.contactLabel}
+                    <input
+                      type="text"
+                      value={contact}
+                      onChange={(event) => setContact(event.target.value)}
+                      placeholder={form.contactHint}
+                      autoComplete="off"
+                      required
+                      disabled={sending}
+                    />
+                  </label>
+                  <div className="request-consent">
+                    <label className="request-consent-label" htmlFor="magnet-consent">
+                      <input
+                        id="magnet-consent"
+                        type="checkbox"
+                        checked={consent}
+                        aria-invalid={consentError}
+                        aria-describedby={consentError ? "magnet-consent-error" : undefined}
+                        onChange={(event) => {
+                          setConsent(event.target.checked);
+                          if (event.target.checked) setConsentError(false);
+                        }}
+                      />
+                      <span className="request-consent-box" aria-hidden="true" />
+                      <span className="request-consent-text">
+                        Я даю{" "}
+                        <a className="request-privacy-link" href="/legal/consent">
+                          согласие на обработку персональных данных
+                        </a>{" "}
+                        и ознакомлен(а) с{" "}
+                        <a className="request-privacy-link" href="/legal/privacy">
+                          Политикой конфиденциальности
+                        </a>
+                      </span>
+                    </label>
+                    {consentError ? (
+                      <p className="request-consent-error" id="magnet-consent-error" role="alert">
+                        Чтобы открыть материал, отметьте согласие на обработку персональных данных.
+                      </p>
+                    ) : null}
+                  </div>
+                  <button className="btn btn-solid magnet-submit" type="submit" disabled={sending}>
+                    {sending ? "Открываю…" : "Открыть карту"}
+                  </button>
+                  {submitError ? (
+                    <p className="magnet-error" role="alert">
+                      Не удалось отправить заявку. Попробуйте ещё раз.
                     </p>
                   ) : null}
-                </div>
-                <button className="btn btn-solid magnet-submit" type="submit" disabled={sending}>
-                  {sending ? "Открываю…" : "Открыть карту"}
-                </button>
-                {submitError ? (
-                  <p className="magnet-error" role="alert">
-                    Не удалось отправить заявку. Попробуйте ещё раз.
-                  </p>
-                ) : null}
-              </form>
-            </section>
+                </form>
+              </section>
+            </>
           ) : (
             <section className="magnet-work" id="karta">
               <p className="magnet-open-note">Материал открыт на этом устройстве. Записи остаются только у вас.</p>
+              <p>
+                После статьи часто остаётся узнавание: да, это про меня. И всё ещё неясно, <em>как именно</em> это
+                устроено у вас. Один человек замирает. Другой соглашается. Третий уходит первым.
+              </p>
+              <p>
+                Материал не ставит диагноз и не обещает, что страх исчезнет. Он помогает заметить цепочку, пока она ещё не
+                стала «моим характером».
+              </p>
+
+              <h2>Три частых автоматизма</h2>
+              <p>
+                Это не типы личности. В разные дни может включаться разное. Обычно один способ привычнее остальных.
+              </p>
+              <div className="magnet-automations">
+                {automations.map((item) => (
+                  <section key={item.id}>
+                    <h3>{item.title}</h3>
+                    <p>{item.text}</p>
+                  </section>
+                ))}
+              </div>
+
               <h2>Карта одного отказа</h2>
               <p>
                 Возьмите не абстрактный страх, а один недавний случай. Не ответили на сообщение. Отказали в просьбе.
