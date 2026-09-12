@@ -51,6 +51,20 @@ function readNotes(): Notes {
   }
 }
 
+function blank(value: string) {
+  const text = value.trim();
+  return text ? <em>{text}</em> : <span className="magnet-chain-gap">______</span>;
+}
+
+function impulse(defense: string) {
+  const map: Record<string, string> = {
+    freeze: "замереть",
+    please: "угодить",
+    leave: "исчезнуть первым",
+  };
+  return blank(map[defense] ?? defense);
+}
+
 export default function KogdaGovoryatNetPage() {
   usePageMeta(kogdaGovoryatNetMeta);
   const { form } = site;
@@ -239,14 +253,6 @@ export default function KogdaGovoryatNetPage() {
           ) : (
             <section className="magnet-work" id="karta">
               <p className="magnet-open-note">Материал открыт на этом устройстве. Записи остаются только у вас.</p>
-              <p>
-                После статьи часто остаётся узнавание: да, это про меня. И всё ещё неясно, <em>как именно</em> это
-                устроено у вас. Один человек замирает. Другой соглашается. Третий уходит первым.
-              </p>
-              <p>
-                Материал не ставит диагноз и не обещает, что страх исчезнет. Он помогает заметить цепочку, пока она ещё не
-                стала «моим характером».
-              </p>
 
               <h2>Три частых автоматизма</h2>
               <p>
@@ -321,14 +327,25 @@ export default function KogdaGovoryatNetPage() {
                 <textarea value={notes.split} onChange={onField("split")} rows={3} />
               </label>
 
+              <section className="magnet-chain" aria-labelledby="magnet-chain-title">
+                <h2 id="magnet-chain-title">Моя цепочка</h2>
+                <p className="magnet-chain-line">
+                  Когда произошло {blank(notes.situation)} → я решил(а) о себе {blank(notes.meaning)} → почувствовал(а){" "}
+                  {blank(notes.body)} → захотелось {impulse(notes.defense)} → я {blank(notes.next)}.
+                </p>
+                <p>
+                  Посмотрите на эту цепочку целиком. Между чужим «нет» и вашим действием есть несколько звеньев. Когда они
+                  становятся видимыми, реакция уже не выглядит просто «моим характером».
+                </p>
+              </section>
+
               <h2>Один маленький шаг</h2>
               <p>
-                Не нужно завтра просить повышение и не нужно насильно говорить «нет». Достаточно заранее выбрать, что в
-                следующей похожей сцене вы только заметите момент, когда снова тянет сказать «да» из страха потерять
-                контакт. Заметить — уже не совсем автомат.
+                В следующей похожей ситуации не нужно заставлять себя реагировать правильно. Попробуйте заметить самый
+                первый момент, когда запускается именно ваша цепочка — желание замереть, угодить или уйти первым.
               </p>
               <label className="magnet-field">
-                Какую ближайшую сцену я хочу просто заметить
+                Какую ближайшую ситуацию я хочу просто заметить?
                 <textarea value={notes.step} onChange={onField("step")} rows={3} />
               </label>
 
@@ -337,9 +354,9 @@ export default function KogdaGovoryatNetPage() {
               </button>
 
               <p className="magnet-close">
-                Если после карты стало видно, что реакция сильнее повода, это уже не про «надо быть смелее». Это про
-                старый способ сохранять связь. Дальше может понадобиться более глубокая работа — не из героизма, а
-                потому что автоматизм живёт глубже одного совета.
+                Если после карты стало видно, что реакция значительно сильнее самого отказа, возможно, здесь работает не
+                только сегодняшняя ситуация. Такие автоматизмы можно исследовать глубже — не заставляя себя стать
+                «смелее», а постепенно понимая, что именно делает чужое «нет» таким болезненным.
               </p>
             </section>
           )}
