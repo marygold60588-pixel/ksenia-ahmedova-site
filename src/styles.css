@@ -1733,12 +1733,6 @@ a {
   min-height: auto;
 }
 
-.magnet-automations {
-  display: grid;
-  gap: 1.4rem;
-  margin: 1.6rem 0 2.4rem;
-}
-
 .magnet-preview {
   margin: 0 0 1.35rem;
   padding: 0;
@@ -1756,10 +1750,6 @@ a {
   content: "—";
   position: absolute;
   left: 0;
-}
-
-.magnet-automations h3 {
-  margin-top: 0;
 }
 
 .magnet-gate,
@@ -1794,10 +1784,14 @@ a {
 }
 
 .magnet-field textarea {
-  min-height: 6.5rem;
+  min-height: 4.4rem;
   resize: vertical;
   font: inherit;
   line-height: 1.55;
+}
+
+.magnet-field-short textarea {
+  min-height: 3.4rem;
 }
 
 .magnet-submit {
@@ -1824,6 +1818,27 @@ a {
   color: var(--ink-soft);
 }
 
+.magnet-field-question {
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.magnet-field-question legend {
+  padding: 0;
+  font-size: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  color: inherit;
+}
+
+.magnet-work fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+
 .magnet-field span,
 .magnet-field p {
   text-transform: none;
@@ -1833,31 +1848,81 @@ a {
   color: var(--sage);
 }
 
-.magnet-defenses {
+.magnet-examples {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--sage);
+  opacity: 0.86;
+}
+
+.magnet-steps {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  counter-reset: magnet-step;
+}
+
+.magnet-step {
+  counter-increment: magnet-step;
+  margin: 0 0 2.1rem;
+}
+
+.magnet-work .magnet-step h2,
+.magnet-work .magnet-result h2,
+.magnet-work .magnet-next h2 {
+  margin-top: 0;
+  margin-bottom: 0.7rem;
+}
+
+.magnet-step h2::before {
+  content: counter(magnet-step) ".";
+  margin-right: 0.4rem;
+  color: var(--gold);
+}
+
+.magnet-reactions {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  gap: 0.55rem;
   margin-top: 0.55rem;
 }
 
-.magnet-defenses label {
+@media (min-width: 720px) {
+  .magnet-reactions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.magnet-reactions label {
+  display: grid;
+  gap: 0.2rem;
   letter-spacing: 0;
   text-transform: none;
-  padding: 0.55rem 0.9rem;
+  padding: 0.85rem 0.95rem;
   border: 1px solid var(--line);
-  border-radius: 999px;
   color: var(--ink);
   cursor: pointer;
 }
 
-.magnet-defenses label.is-on {
+.magnet-reactions label strong {
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  font-weight: 400;
+}
+
+.magnet-reactions label.is-on {
   background: var(--ink);
   color: var(--cream);
   border-color: var(--ink);
 }
 
-.magnet-defenses input {
+.magnet-reactions label.is-on span {
+  color: rgba(247, 243, 235, 0.78);
+}
+
+.magnet-reactions input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1865,29 +1930,41 @@ a {
   pointer-events: none;
 }
 
-.magnet-print {
-  margin: 0.6rem 0 1.8rem;
-}
-
-.magnet-chain {
-  margin: 2rem 0 2.2rem;
-  padding: 1.4rem 1.5rem 0.2rem;
+.magnet-result {
+  margin: 0.4rem 0 2rem;
+  padding: 1.35rem 1.35rem 0.35rem;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.28);
 }
 
-.magnet-chain-line {
-  font-family: var(--serif);
-  font-size: 1.18rem;
-  line-height: 1.6;
-}
-
-.magnet-chain-line em {
-  font-style: italic;
-}
-
-.magnet-chain-gap {
+.magnet-result-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+.magnet-result-value {
+  margin: 0 0 1.05rem;
+  font-family: var(--serif);
+  font-size: 1.16rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.magnet-next-q {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 1rem 0 0;
+  padding: 0.15rem 0 0.15rem 1.1rem;
+  border-left: 1px solid var(--gold);
+}
+
+.magnet-print {
+  margin: 1.4rem 0 1.8rem;
 }
 
 .magnet-close {

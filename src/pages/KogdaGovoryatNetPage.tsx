@@ -5,32 +5,32 @@ import { site } from "@/content";
 import {
   NOTES_KEY,
   UNLOCK_KEY,
-  automations,
   kogdaGovoryatNetMeta,
+  reactions,
 } from "@/content/lead-magnets/kogda-govoryat-net";
 import { submitLead } from "@/lib/leads";
 import { usePageMeta } from "@/lib/page-meta";
 
 type Notes = {
   situation: string;
-  fact: string;
   meaning: string;
-  body: string;
-  defense: string;
-  next: string;
-  split: string;
-  step: string;
+  felt: string;
+  reaction: string;
+  otherReaction: string;
+  action: string;
+  outside: string;
+  inside: string;
 };
 
 const emptyNotes: Notes = {
   situation: "",
-  fact: "",
   meaning: "",
-  body: "",
-  defense: "",
-  next: "",
-  split: "",
-  step: "",
+  felt: "",
+  reaction: "",
+  otherReaction: "",
+  action: "",
+  outside: "",
+  inside: "",
 };
 
 function readUnlocked() {
@@ -45,24 +45,36 @@ function readNotes(): Notes {
   try {
     const raw = localStorage.getItem(NOTES_KEY);
     if (!raw) return emptyNotes;
-    return { ...emptyNotes, ...(JSON.parse(raw) as Partial<Notes>) };
+    const saved = JSON.parse(raw) as Partial<Notes> & {
+      body?: string;
+      defense?: string;
+      next?: string;
+      fact?: string;
+      split?: string;
+    };
+    return {
+      ...emptyNotes,
+      situation: saved.situation ?? "",
+      meaning: saved.meaning ?? "",
+      felt: saved.felt ?? saved.body ?? "",
+      reaction: saved.reaction ?? saved.defense ?? "",
+      otherReaction: saved.otherReaction ?? "",
+      action: saved.action ?? saved.next ?? "",
+      outside: saved.outside ?? saved.fact ?? "",
+      inside: saved.inside ?? saved.split ?? "",
+    };
   } catch {
     return emptyNotes;
   }
 }
 
-function blank(value: string) {
+function show(value: string) {
   const text = value.trim();
-  return text ? <em>{text}</em> : <span className="magnet-chain-gap">______</span>;
+  return text || "—";
 }
 
-function impulse(defense: string) {
-  const map: Record<string, string> = {
-    freeze: "замереть",
-    please: "угодить",
-    leave: "исчезнуть первым",
-  };
-  return blank(map[defense] ?? defense);
+function reactionTitle(notes: Notes) {
+  return reactions.find((item) => item.id === notes.reaction)?.title ?? "—";
 }
 
 export default function KogdaGovoryatNetPage() {
@@ -254,109 +266,150 @@ export default function KogdaGovoryatNetPage() {
             <section className="magnet-work" id="karta">
               <p className="magnet-open-note">Материал открыт на этом устройстве. Записи остаются только у вас.</p>
 
-              <h2>Три частых автоматизма</h2>
-              <p>
-                Это не типы личности. В разные дни может включаться разное. Обычно один способ привычнее остальных.
-              </p>
-              <div className="magnet-automations">
-                {automations.map((item) => (
-                  <section key={item.id}>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                  </section>
-                ))}
-              </div>
+              <ol className="magnet-steps">
+                <li className="magnet-step">
+                  <h2>Что случилось?</h2>
+                  <p>
+                    Вспомните одну недавнюю ситуацию, где вам сказали «нет» — или вы боялись услышать отказ и поэтому не
+                    решились попросить, предложить, отказаться или проявиться.
+                  </p>
+                  <p>Опишите только одну сцену.</p>
+                  <label className="magnet-field">
+                    Что произошло?
+                    <textarea value={notes.situation} onChange={onField("situation")} rows={3} />
+                    <span className="magnet-examples">
+                      «Хотела попросить начальника отпустить меня пораньше, но так и не подошла».
+                      <br />
+                      «Предложила встретиться, а человек ответил, что сегодня не может».
+                    </span>
+                  </label>
+                </li>
 
-              <h2>Карта одного отказа</h2>
-              <p>
-                Возьмите не абстрактный страх, а один недавний случай. Не ответили на сообщение. Отказали в просьбе.
-                Коротко ответили на работе. Перенесли встречу. Сказали «нет» вашей цене. Хватит малого.
-              </p>
-              <p>Пишите коротко. Здесь нет правильного ответа — есть точная картина.</p>
+                <li className="magnet-step">
+                  <h2>Чего вы испугались на самом деле?</h2>
+                  <p>Представьте это «нет». Что оно как будто говорит не о вашей просьбе, а о вас?</p>
+                  <label className="magnet-field magnet-field-question">
+                    Если мне откажут, это как будто значит, что я…
+                    <textarea value={notes.meaning} onChange={onField("meaning")} rows={2} />
+                    <span className="magnet-examples">
+                      «Я навязываюсь». «Я слишком много хочу». «Я не важна». «Меня не выбирают». «Мои желания ничего не
+                      значат».
+                    </span>
+                  </label>
+                </li>
 
-              <label className="magnet-field">
-                Ситуация
-                <span>Что это было, когда и с кем. Одна сцена, не вся жизнь.</span>
-                <textarea value={notes.situation} onChange={onField("situation")} rows={3} />
-              </label>
-              <label className="magnet-field">
-                Что произошло фактически
-                <span>Только наблюдаемые факты. Без догадок о чужих чувствах и без «значит, я…».</span>
-                <textarea value={notes.fact} onChange={onField("fact")} rows={3} />
-              </label>
-              <label className="magnet-field">
-                Что я мгновенно решил(а) о себе
-                <span>Какая мысль о себе возникла быстрее, чем объяснение. Например: я лишний, слишком много, меня не выбрали.</span>
-                <textarea value={notes.meaning} onChange={onField("meaning")} rows={3} />
-              </label>
-              <label className="magnet-field">
-                Чувство и тело
-                <span>Стыд, пустота, злость, вина, желание провалиться. Где это в теле: горло, живот, грудь, руки.</span>
-                <textarea value={notes.body} onChange={onField("body")} rows={3} />
-              </label>
+                <li className="magnet-step">
+                  <h2>Что вы почувствовали — и что сделали?</h2>
+                  <label className="magnet-field magnet-field-question">
+                    Что вы почувствовали в этот момент?
+                    <textarea value={notes.felt} onChange={onField("felt")} rows={2} />
+                    <span className="magnet-examples">
+                      Стыд, тревогу, злость, пустоту? Что произошло в теле — сжалось горло, стало тяжело в груди,
+                      захотелось исчезнуть?
+                    </span>
+                  </label>
 
-              <fieldset className="magnet-field">
-                <legend>Какая защита включилась</legend>
-                <p>Если не совпадает ни один — напишите свой вариант ниже.</p>
-                <div className="magnet-defenses">
-                  {automations.map((item) => (
-                    <label key={item.id} className={notes.defense === item.id ? "is-on" : ""}>
-                      <input
-                        type="radio"
-                        name="defense"
-                        value={item.id}
-                        checked={notes.defense === item.id}
-                        onChange={onField("defense")}
-                      />
-                      {item.title}
+                  <fieldset className="magnet-field magnet-field-question">
+                    <legend>А что вы сделали?</legend>
+                    <div className="magnet-reactions">
+                      {reactions.map((item) => (
+                        <label key={item.id} className={notes.reaction === item.id ? "is-on" : ""}>
+                          <input
+                            type="radio"
+                            name="reaction"
+                            value={item.id}
+                            checked={notes.reaction === item.id}
+                            onChange={onField("reaction")}
+                          />
+                          <strong>{item.title}</strong>
+                          {item.hint ? <span>{item.hint}</span> : null}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  {notes.reaction === "other" ? (
+                    <label className="magnet-field magnet-field-short">
+                      Свой вариант
+                      <textarea value={notes.otherReaction} onChange={onField("otherReaction")} rows={2} />
                     </label>
-                  ))}
-                </div>
-              </fieldset>
-              <label className="magnet-field">
-                Что я сделал(а) дальше
-                <span>Промолчали, согласились, написали ещё раз, исчезли, начали себя убеждать, напали первыми.</span>
-                <textarea value={notes.next} onChange={onField("next")} rows={3} />
-              </label>
-              <label className="magnet-field">
-                Отказ в предмете или «отвергли меня»?
-                <span>
-                  Отказ — «не сейчас», «выбрали другого», «мне это не близко». Отвержение — будто отказали в праве
-                  просить, чувствовать, занимать место.
-                </span>
-                <textarea value={notes.split} onChange={onField("split")} rows={3} />
-              </label>
+                  ) : null}
 
-              <section className="magnet-chain" aria-labelledby="magnet-chain-title">
-                <h2 id="magnet-chain-title">Моя цепочка</h2>
-                <p className="magnet-chain-line">
-                  Когда произошло {blank(notes.situation)} → я решил(а) о себе {blank(notes.meaning)} → почувствовал(а){" "}
-                  {blank(notes.body)} → захотелось {impulse(notes.defense)} → я {blank(notes.next)}.
+                  <label className="magnet-field magnet-field-short">
+                    Что именно вы сделали?
+                    <textarea value={notes.action} onChange={onField("action")} rows={2} />
+                    <span className="magnet-examples">Необязательно. Коротко, если хочется уточнить.</span>
+                  </label>
+                </li>
+
+                <li className="magnet-step">
+                  <h2>А теперь разделите две вещи</h2>
+                  <p>
+                    Есть само «нет» — реальное или возможное. И есть то, что оно начинает означать внутри. Посмотрите,
+                    совпадают ли эти две вещи.
+                  </p>
+                  <label className="magnet-field magnet-field-question">
+                    Что произошло или могло произойти в реальности?
+                    <textarea value={notes.outside} onChange={onField("outside")} rows={2} />
+                    <span className="magnet-examples">
+                      «Начальник мог сказать: сегодня не получится уйти раньше».
+                      <br />
+                      «Человек сказал: сегодня я не могу встретиться».
+                    </span>
+                  </label>
+                  <label className="magnet-field magnet-field-question">
+                    А что это «нет» стало означать про меня?
+                    <textarea value={notes.inside} onChange={onField("inside")} rows={2} />
+                    <span className="magnet-examples">
+                      «Мои желания не важны». «Я навязываюсь». «Меня не хотят». «Я не имею права просить».
+                    </span>
+                  </label>
+                </li>
+              </ol>
+
+              <section className="magnet-result" aria-labelledby="magnet-result-title">
+                <h2 id="magnet-result-title">Посмотрите на разницу</h2>
+                <p className="magnet-result-label">Снаружи</p>
+                <p className="magnet-result-value">{show(notes.outside)}</p>
+                <p className="magnet-result-label">Внутри это прозвучало как</p>
+                <p className="magnet-result-value">
+                  {notes.inside.trim() ? `«${notes.inside.trim()}»` : "—"}
+                </p>
+                <p className="magnet-result-label">И вашей первой реакцией было</p>
+                <p className="magnet-result-value">{reactionTitle(notes)}</p>
+                <p>
+                  Возможно, болезненным оказалось не только само «нет», а то, что оно начало означать про вас.
                 </p>
                 <p>
-                  Посмотрите на эту цепочку целиком. Между чужим «нет» и вашим действием есть несколько звеньев. Когда они
-                  становятся видимыми, реакция уже не выглядит просто «моим характером».
+                  Чужой отказ может относиться к просьбе, встрече, цене, времени или возможностям другого человека. Но
+                  внутри иногда переживается гораздо шире — как сообщение о собственной ценности, нужности или праве
+                  занимать место.
                 </p>
+                <p>Если вы увидели эту разницу в своей ситуации, задача этой карты уже выполнена.</p>
               </section>
 
-              <h2>Один маленький шаг</h2>
-              <p>
-                В следующей похожей ситуации не нужно заставлять себя реагировать правильно. Попробуйте заметить самый
-                первый момент, когда запускается именно ваша цепочка — желание замереть, угодить или уйти первым.
-              </p>
-              <label className="magnet-field">
-                Какую ближайшую ситуацию я хочу просто заметить?
-                <textarea value={notes.step} onChange={onField("step")} rows={3} />
-              </label>
+              <section className="magnet-next">
+                <h2>В следующий раз</h2>
+                <p>
+                  Не нужно обещать себе, что теперь вы обязательно попросите, выдержите отказ или перестанете бояться.
+                </p>
+                <p>
+                  Попробуйте поймать один момент: когда чужое реальное или возможное «нет» начинает превращаться внутри в
+                  мысль о вас самих.
+                </p>
+                <p className="magnet-next-q">
+                  «Мне сейчас отказали в чём-то — или я уже чувствую, будто отвергли меня целиком?»
+                </p>
+              </section>
 
               <button className="btn btn-ghost magnet-print" type="button" onClick={() => window.print()}>
                 Сохранить или распечатать
               </button>
 
               <p className="magnet-close">
-                Если после карты стало видно, что реакция значительно сильнее самого отказа, возможно, здесь работает не
-                только сегодняшняя ситуация. Такие автоматизмы можно исследовать глубже — не заставляя себя стать
-                «смелее», а постепенно понимая, что именно делает чужое «нет» таким болезненным.
+                Одного такого наблюдения недостаточно, чтобы изменить привычную реакцию — и от вас этого здесь не
+                требуется. Но теперь между чужим «нет» и ощущением «со мной что-то не так» может появиться ещё один
+                вопрос: что произошло на самом деле — и что этот отказ заставил меня почувствовать о себе?
               </p>
             </section>
           )}
