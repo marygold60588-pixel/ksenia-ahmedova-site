@@ -1772,6 +1772,15 @@ a {
   color: var(--ink-soft);
 }
 
+.magnet-contact-note {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sage);
+}
+
 .magnet-form input:not([type="radio"]):not([type="checkbox"]),
 .magnet-field textarea {
   display: block;
