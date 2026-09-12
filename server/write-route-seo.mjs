@@ -3,7 +3,7 @@ import path from "node:path";
 import { applyRouteSeo } from "./page-seo.mjs";
 
 const DIST = path.resolve(process.cwd(), "dist");
-const ROUTES = ["/strah-otverzheniya", "/kogda-govoryat-net"];
+const ROUTES = ["/strah-otverzheniya", "/boyus-prosit", "/kogda-govoryat-net"];
 
 const html = await readFile(path.join(DIST, "index.html"), "utf8");
 

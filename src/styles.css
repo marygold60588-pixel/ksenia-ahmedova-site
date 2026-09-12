@@ -1657,6 +1657,16 @@ a {
   margin: 2.4rem 0 0.85rem;
 }
 
+.article-body a:not(.article-next-link) {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.article-body a:not(.article-next-link):hover {
+  color: var(--ink);
+}
+
 .article-body p {
   margin: 0 0 1.05rem;
 }

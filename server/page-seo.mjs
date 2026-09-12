@@ -30,6 +30,37 @@ const PAGE_SEO = {
       },
     },
   },
+  "/boyus-prosit": {
+    title: "Почему я боюсь просить: страх отказа и «я слишком»",
+    description:
+      "Почему я боюсь просить и боюсь попросить помощи. Страх попросить часто связан не с самой просьбой, а с тем, что отказ начинает означать про меня.",
+    canonical: "https://ksenia-ahmedova.ru/boyus-prosit",
+    ogType: "article",
+    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "Почему я боюсь просить: страх отказа и «я слишком»",
+      description:
+        "Почему я боюсь просить и боюсь попросить помощи. Страх попросить часто связан не с самой просьбой, а с тем, что отказ начинает означать про меня.",
+      inLanguage: "ru",
+      datePublished: "2026-09-12",
+      dateModified: "2026-09-12",
+      mainEntityOfPage: "https://ksenia-ahmedova.ru/boyus-prosit",
+      url: "https://ksenia-ahmedova.ru/boyus-prosit",
+      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      author: {
+        "@type": "Person",
+        "@id": "https://ksenia-ahmedova.ru/#person",
+        name: "Ксения Ахмедова",
+        jobTitle: "врач-психотерапевт, психоаналитик",
+        url: "https://ksenia-ahmedova.ru/",
+      },
+      publisher: {
+        "@id": "https://ksenia-ahmedova.ru/#person",
+      },
+    },
+  },
   "/kogda-govoryat-net": {
     title: "Когда мне говорят «нет»: карта реакции на отказ",
     description:

@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import BoyusPrositPage from "@/pages/BoyusPrositPage";
 import ConsentPage from "@/pages/ConsentPage";
 import HomePage from "@/pages/HomePage";
 import KogdaGovoryatNetPage from "@/pages/KogdaGovoryatNetPage";
@@ -10,6 +11,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/strah-otverzheniya" element={<StrahOtverzheniyaPage />} />
+      <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
       <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
       <Route path="/legal/privacy" element={<PrivacyPage />} />
       <Route path="/legal/consent" element={<ConsentPage />} />
