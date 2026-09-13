@@ -61,6 +61,37 @@ const PAGE_SEO = {
       },
     },
   },
+  "/strah-otkaza-i-ugozhdenie": {
+    title: "Почему я соглашаюсь, хотя не хочу: страх отказа и угождение",
+    description:
+      "Почему я соглашаюсь, хотя не хочу, и боюсь сказать нет. Часто это не про «неумение ставить границы», а про страх, что своё «нет» испортит отношение.",
+    canonical: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
+    ogType: "article",
+    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "Почему я соглашаюсь, хотя не хочу: страх отказа и угождение",
+      description:
+        "Почему я соглашаюсь, хотя не хочу, и боюсь сказать нет. Часто это не про «неумение ставить границы», а про страх, что своё «нет» испортит отношение.",
+      inLanguage: "ru",
+      datePublished: "2026-09-13",
+      dateModified: "2026-09-13",
+      mainEntityOfPage: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
+      url: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
+      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      author: {
+        "@type": "Person",
+        "@id": "https://ksenia-ahmedova.ru/#person",
+        name: "Ксения Ахмедова",
+        jobTitle: "врач-психотерапевт, психоаналитик",
+        url: "https://ksenia-ahmedova.ru/",
+      },
+      publisher: {
+        "@id": "https://ksenia-ahmedova.ru/#person",
+      },
+    },
+  },
   "/kogda-govoryat-net": {
     title: "Когда мне говорят «нет»: карта реакции на отказ",
     description:
