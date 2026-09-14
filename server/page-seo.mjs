@@ -92,6 +92,37 @@ const PAGE_SEO = {
       },
     },
   },
+  "/posle-otkaza-hochu-ischeznut": {
+    title: "Почему после отказа хочется исчезнуть: холод, «мне не надо» и дистанция",
+    description:
+      "Почему после отказа хочется исчезнуть, закрыться или уйти первым. Часто это не равнодушие, а способ не встретить следующее «нет».",
+    canonical: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
+    ogType: "article",
+    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "Почему после отказа хочется исчезнуть: холод, «мне не надо» и дистанция",
+      description:
+        "Почему после отказа хочется исчезнуть, закрыться или уйти первым. Часто это не равнодушие, а способ не встретить следующее «нет».",
+      inLanguage: "ru",
+      datePublished: "2026-09-14",
+      dateModified: "2026-09-14",
+      mainEntityOfPage: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
+      url: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
+      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      author: {
+        "@type": "Person",
+        "@id": "https://ksenia-ahmedova.ru/#person",
+        name: "Ксения Ахмедова",
+        jobTitle: "врач-психотерапевт, психоаналитик",
+        url: "https://ksenia-ahmedova.ru/",
+      },
+      publisher: {
+        "@id": "https://ksenia-ahmedova.ru/#person",
+      },
+    },
+  },
   "/kogda-govoryat-net": {
     title: "Когда мне говорят «нет»: карта реакции на отказ",
     description:

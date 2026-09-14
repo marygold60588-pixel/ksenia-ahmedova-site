@@ -7,6 +7,7 @@ const ROUTES = [
   "/strah-otverzheniya",
   "/boyus-prosit",
   "/strah-otkaza-i-ugozhdenie",
+  "/posle-otkaza-hochu-ischeznut",
   "/kogda-govoryat-net",
 ];
 

@@ -3,6 +3,7 @@ import BoyusPrositPage from "@/pages/BoyusPrositPage";
 import ConsentPage from "@/pages/ConsentPage";
 import HomePage from "@/pages/HomePage";
 import KogdaGovoryatNetPage from "@/pages/KogdaGovoryatNetPage";
+import PosleOtkazaHochuIscheznutPage from "@/pages/PosleOtkazaHochuIscheznutPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import StrahOtkazaIUgozhdeniePage from "@/pages/StrahOtkazaIUgozhdeniePage";
 import StrahOtverzheniyaPage from "@/pages/StrahOtverzheniyaPage";
@@ -14,6 +15,7 @@ export default function App() {
       <Route path="/strah-otverzheniya" element={<StrahOtverzheniyaPage />} />
       <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
       <Route path="/strah-otkaza-i-ugozhdenie" element={<StrahOtkazaIUgozhdeniePage />} />
+      <Route path="/posle-otkaza-hochu-ischeznut" element={<PosleOtkazaHochuIscheznutPage />} />
       <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
       <Route path="/legal/privacy" element={<PrivacyPage />} />
       <Route path="/legal/consent" element={<ConsentPage />} />
