@@ -151,8 +151,8 @@ export default function KogdaGovoryatNetPage() {
               <span>{site.identity.givenName}</span>
               <span className="article-brand-family">{site.identity.familyName}</span>
             </a>
-            <a className="article-home" href="/strah-otverzheniya">
-              К статье
+            <a className="article-home" href="/">
+              На главную
             </a>
           </div>
           <div className="article-hero-copy">
@@ -176,8 +176,8 @@ export default function KogdaGovoryatNetPage() {
           {!unlocked ? (
             <>
               <p>
-                После статьи часто остаётся узнавание: да, это про меня. И всё ещё неясно, <em>как именно</em> это
-                устроено у вас в одной конкретной сцене.
+                Знакомое «нет» часто оставляет не только отказ в просьбе — а мысль, что отвергли вас. Здесь можно
+                разобрать, <em>как именно</em> это устроено у вас в одной конкретной сцене.
               </p>
               <p>
                 Материал не ставит диагноз и не обещает, что страх исчезнет. Он помогает заметить цепочку, пока она ещё не
@@ -427,7 +427,7 @@ export default function KogdaGovoryatNetPage() {
           </p>
         </div>
       </main>
-      <Footer />
+      <Footer showPractice={false} />
     </div>
   );
 }

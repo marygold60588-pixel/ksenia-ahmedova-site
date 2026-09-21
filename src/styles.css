@@ -992,6 +992,27 @@ a {
   color: color-mix(in srgb, var(--sage) 28%, transparent);
 }
 
+.home-practice {
+  padding-block: clamp(3.2rem, 6vw, 5.6rem);
+}
+
+.home-practice-inner {
+  max-width: 36rem;
+}
+
+.home-practice h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.85rem, 3.4vw, 2.55rem);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0.4rem 0 0.9rem;
+}
+
+.home-practice .section-lead {
+  margin-bottom: 1.45rem;
+}
+
 .paper {
   display: grid;
   justify-items: center;
@@ -1444,11 +1465,21 @@ a {
 .site-footer {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 1rem;
   padding: 1.4rem var(--pad) 1.8rem;
   border-top: 1px solid var(--line);
   font-size: 0.88rem;
   color: var(--ink-soft);
+}
+
+.footer-practice {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+}
+
+.footer-practice:hover {
+  color: var(--ink);
 }
 
 .legal-page {

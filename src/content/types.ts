@@ -84,6 +84,13 @@ export type SiteContent = {
     hint: string;
     item: Gift;
   };
+  freePractice: {
+    kicker: string;
+    title: string;
+    lead: string;
+    cta: string;
+    href: string;
+  };
   voices: {
     kicker: string;
     title: string;
