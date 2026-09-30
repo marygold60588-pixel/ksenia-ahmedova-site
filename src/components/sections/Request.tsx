@@ -4,6 +4,7 @@ import ScrollReveal from "@/components/bits/ScrollReveal";
 import { site } from "@/content";
 import type { ContactChannel, LeadIntent } from "@/content/types";
 import { submitLead } from "@/lib/leads";
+import { metrikaGoals, reachGoal } from "@/lib/metrika";
 
 export default function Request() {
   const { form } = site;
@@ -45,7 +46,7 @@ export default function Request() {
     setDone(true);
     if (!goalSent.current) {
       goalSent.current = true;
-      window.ym?.(112330836, "reachGoal", "form_submit_success");
+      reachGoal(metrikaGoals.formSubmitSuccess);
     }
   };
 

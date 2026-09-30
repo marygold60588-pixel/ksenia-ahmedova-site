@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Noise from "@/components/bits/Noise";
 import Footer from "@/components/layout/Footer";
 import { site } from "@/content";
@@ -9,6 +9,7 @@ import {
   reactions,
 } from "@/content/lead-magnets/kogda-govoryat-net";
 import { submitLead } from "@/lib/leads";
+import { metrikaGoals, reachGoal } from "@/lib/metrika";
 import { usePageMeta } from "@/lib/page-meta";
 
 type Notes = {
@@ -77,6 +78,32 @@ function reactionTitle(notes: Notes) {
   return reactions.find((item) => item.id === notes.reaction)?.title ?? "—";
 }
 
+function practiceStarted(notes: Notes) {
+  return Boolean(
+    notes.situation.trim() ||
+      notes.meaning.trim() ||
+      notes.felt.trim() ||
+      notes.reaction ||
+      notes.otherReaction.trim() ||
+      notes.action.trim() ||
+      notes.outside.trim() ||
+      notes.inside.trim(),
+  );
+}
+
+function practiceComplete(notes: Notes) {
+  const reactionFilled =
+    Boolean(notes.reaction) && (notes.reaction !== "other" || Boolean(notes.otherReaction.trim()));
+  return Boolean(
+    notes.situation.trim() &&
+      notes.meaning.trim() &&
+      notes.felt.trim() &&
+      reactionFilled &&
+      notes.outside.trim() &&
+      notes.inside.trim(),
+  );
+}
+
 export default function KogdaGovoryatNetPage() {
   usePageMeta(kogdaGovoryatNetMeta);
   const { form } = site;
@@ -88,6 +115,12 @@ export default function KogdaGovoryatNetPage() {
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [notes, setNotes] = useState<Notes>(emptyNotes);
+  const practiceStartSent = useRef(false);
+  const practiceCompleteSent = useRef(false);
+
+  useEffect(() => {
+    reachGoal(metrikaGoals.magnetPageOpen);
+  }, []);
 
   useEffect(() => {
     setUnlocked(readUnlocked());
@@ -100,6 +133,18 @@ export default function KogdaGovoryatNetPage() {
       localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
     } catch {
       /* ignore quota */
+    }
+  }, [notes, unlocked]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    if (!practiceStartSent.current && practiceStarted(notes)) {
+      practiceStartSent.current = true;
+      reachGoal(metrikaGoals.magnetPracticeStart);
+    }
+    if (!practiceCompleteSent.current && practiceComplete(notes)) {
+      practiceCompleteSent.current = true;
+      reachGoal(metrikaGoals.magnetPracticeComplete);
     }
   }, [notes, unlocked]);
 
@@ -135,7 +180,7 @@ export default function KogdaGovoryatNetPage() {
       /* ignore */
     }
     setUnlocked(true);
-    window.ym?.(112330836, "reachGoal", "leadmagnet_otkaz");
+    reachGoal(metrikaGoals.magnetLead);
     window.setTimeout(() => {
       document.getElementById("karta")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);

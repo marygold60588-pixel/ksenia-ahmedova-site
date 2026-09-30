@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import YandexMetrikaHits from "@/components/analytics/YandexMetrikaHits";
 import BoyusPrositPage from "@/pages/BoyusPrositPage";
 import ConsentPage from "@/pages/ConsentPage";
 import HomePage from "@/pages/HomePage";
@@ -10,15 +11,18 @@ import StrahOtverzheniyaPage from "@/pages/StrahOtverzheniyaPage";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/strah-otverzheniya" element={<StrahOtverzheniyaPage />} />
-      <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
-      <Route path="/strah-otkaza-i-ugozhdenie" element={<StrahOtkazaIUgozhdeniePage />} />
-      <Route path="/posle-otkaza-hochu-ischeznut" element={<PosleOtkazaHochuIscheznutPage />} />
-      <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
-      <Route path="/legal/privacy" element={<PrivacyPage />} />
-      <Route path="/legal/consent" element={<ConsentPage />} />
-    </Routes>
+    <>
+      <YandexMetrikaHits />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/strah-otverzheniya" element={<StrahOtverzheniyaPage />} />
+        <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
+        <Route path="/strah-otkaza-i-ugozhdenie" element={<StrahOtkazaIUgozhdeniePage />} />
+        <Route path="/posle-otkaza-hochu-ischeznut" element={<PosleOtkazaHochuIscheznutPage />} />
+        <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
+        <Route path="/legal/privacy" element={<PrivacyPage />} />
+        <Route path="/legal/consent" element={<ConsentPage />} />
+      </Routes>
+    </>
   );
 }
