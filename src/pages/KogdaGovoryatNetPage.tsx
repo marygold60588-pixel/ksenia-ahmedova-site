@@ -200,20 +200,30 @@ export default function KogdaGovoryatNetPage() {
               На главную
             </a>
           </div>
-          <div className="article-hero-copy">
-            <p className="kicker kicker-light">Рабочий материал</p>
-            <h1 className="article-title">Когда мне говорят «нет»</h1>
-            <p className="article-byline">
-              {site.identity.fullName}
-              <span aria-hidden="true"> · </span>
-              карта реакции на отказ
-            </p>
-            <div className="article-lead">
-              <p>
-                Не упражнение на смелость и не способ «проработать страх». Это короткий разбор одного реального отказа:
-                что случилось фактически, что вы мгновенно решили о себе, и какая защита включилась.
+          <div className="magnet-hero-layout">
+            <div className="article-hero-copy">
+              <h1 className="article-title">Когда мне говорят „нет“</h1>
+              <div className="article-lead">
+                <p>
+                  Иногда чужое „нет“ переживается не как отказ в просьбе, а как доказательство того, что вы не нужны.
+                </p>
+                <p>Почему так происходит именно с вами?</p>
+                <p>
+                  Бесплатная карта поможет разобрать одну реальную ситуацию: что произошло, какой смысл вы придали
+                  отказу и как попытались защититься от болезненного чувства.
+                </p>
+              </div>
+              <p className="magnet-hero-note">
+                Без обещаний избавиться от страха за пять минут. С возможностью лучше понять собственную реакцию.
               </p>
+              <a className="btn btn-solid" href="#magnet-gate-title">
+                Открыть бесплатную карту
+              </a>
             </div>
+            <figure className="magnet-portrait">
+              <img src="/media/portraits/gaze-sage.png" alt="Ксения Ахмедова" width="440" height="550" />
+              <figcaption>Ксения Ахмедова · врач-психотерапевт, психиатр · более 20 лет в профессии</figcaption>
+            </figure>
           </div>
         </header>
 
