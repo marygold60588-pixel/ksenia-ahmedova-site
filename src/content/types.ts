@@ -117,6 +117,9 @@ export type SiteContent = {
     messageLabel: string;
     submit: string;
     success: string;
+    assistantLabel: string;
+    assistantHint: string;
+    assistantHref: string;
     channels: { value: ContactChannel; label: string }[];
     intents: { value: LeadIntent; label: string }[];
   };

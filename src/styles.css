@@ -1462,6 +1462,23 @@ a {
   align-self: center;
 }
 
+.request-assistant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.15rem;
+  margin-top: 1.6rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.request-assistant p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
 .site-footer {
   display: flex;
   justify-content: space-between;
