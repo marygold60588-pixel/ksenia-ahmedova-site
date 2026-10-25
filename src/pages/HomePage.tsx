@@ -5,7 +5,6 @@ import Footer from "@/components/layout/Footer";
 import Hero from "@/components/sections/Hero";
 
 const WhoSees = lazy(() => import("@/components/sections/WhoSees"));
-const GazeTurn = lazy(() => import("@/components/sections/GazeTurn"));
 const Consultation = lazy(() => import("@/components/sections/Consultation"));
 const Traces = lazy(() => import("@/components/sections/Traces"));
 const Diagnosis = lazy(() => import("@/components/sections/Diagnosis"));
@@ -38,7 +37,6 @@ export default function HomePage() {
         <Hero />
         <Suspense fallback={null}>
           <WhoSees />
-          <GazeTurn />
           <Consultation />
           <Traces />
           <Diagnosis />

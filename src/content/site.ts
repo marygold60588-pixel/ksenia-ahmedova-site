@@ -10,7 +10,6 @@ export const site: SiteContent = {
   },
   nav: [
     { label: "Практика", href: "#expert" },
-    { label: "Взгляд", href: "#turn" },
     { label: "Консультации", href: "#consult" },
     { label: "Диагностика", href: "#diagnosis" },
     { label: "Заявка", href: "#request" },

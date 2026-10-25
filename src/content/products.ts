@@ -45,7 +45,7 @@ export const products: Product[] = [
       "Упражнения на самоанализ",
       "Финальная карта моего сценария",
     ],
-    price: 7900,
+    price: 8000,
     currency: "RUB",
     cta: "Начать с диагностики",
     href: "#request",
