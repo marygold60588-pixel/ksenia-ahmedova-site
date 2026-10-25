@@ -2092,6 +2092,23 @@ a {
   color: var(--ink);
 }
 
+.magnet-consult {
+  margin-top: 2.6rem;
+  padding-top: 1.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.magnet-consult-sign {
+  margin: 1.25rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.magnet-consult .btn-solid {
+  margin-top: 1.25rem;
+}
+
 .article-page .site-footer {
   position: relative;
   z-index: 1;
