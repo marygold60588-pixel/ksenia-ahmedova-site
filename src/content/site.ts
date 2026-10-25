@@ -90,7 +90,7 @@ export const site: SiteContent = {
     closing:
       "После того как механизм становится видимым, естественный следующий шаг — не ещё один курс, а глубокая работа.",
     cta: "Оставить заявку на консультацию",
-    image: "/media/portraits/portrait-silk.png",
+    image: "/media/portraits/portrait-silk-final.png",
     imageAlt: "Ксения Ахмедова",
   },
   form: {
