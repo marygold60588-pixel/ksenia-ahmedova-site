@@ -221,7 +221,7 @@ export default function KogdaGovoryatNetPage() {
               </a>
             </div>
             <figure className="magnet-portrait">
-              <img src="/media/portraits/gaze-sage.png" alt="Ксения Ахмедова" width="440" height="550" />
+              <img src="/media/portraits/cream%20smile.png" alt="Ксения Ахмедова" width="440" height="550" />
               <figcaption>Ксения Ахмедова · врач-психотерапевт, психиатр · более 20 лет в профессии</figcaption>
             </figure>
           </div>
