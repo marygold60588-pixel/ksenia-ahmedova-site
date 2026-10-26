@@ -2,7 +2,7 @@ import BlurText from "@/components/bits/BlurText";
 import GlassSurface from "@/components/bits/GlassSurface";
 import ScrollReveal from "@/components/bits/ScrollReveal";
 import Button from "@/components/ui/Button";
-import { getProduct, site } from "@/content";
+import { formatPrice, getProduct, site } from "@/content";
 import { assetUrl } from "@/lib/asset";
 
 export default function Consultation() {
@@ -23,8 +23,10 @@ export default function Consultation() {
         <ScrollReveal>
           <p className="consult-lead">{consult.description}</p>
           <p className="consult-closing">{consultation.closing}</p>
+          <p className="consult-closing">Врач-психотерапевт, психиатр. Более 20 лет в профессии, частная практика с 2014 года.</p>
+          <p className="consult-closing">Первичная встреча: 60 минут · {formatPrice(consult.price, consult.currency)}</p>
         </ScrollReveal>
-        <Button href="#request" variant="solid">
+        <Button href={site.form.assistantHref} variant="solid">
           {consultation.cta}
         </Button>
       </GlassSurface>
