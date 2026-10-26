@@ -1,3 +1,4 @@
+import InteractivePracticePage from "@/pages/InteractivePracticePage";
 import { Route, Routes } from "react-router-dom";
 import YandexMetrikaHits from "@/components/analytics/YandexMetrikaHits";
 import BoyusPrositPage from "@/pages/BoyusPrositPage";
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
         <Route path="/strah-otkaza-i-ugozhdenie" element={<StrahOtkazaIUgozhdeniePage />} />
         <Route path="/posle-otkaza-hochu-ischeznut" element={<PosleOtkazaHochuIscheznutPage />} />
+        <Route path="/praktika-ne-otkazyvatsya-ot-sebya" element={<InteractivePracticePage />} />
         <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
         <Route path="/legal/privacy" element={<PrivacyPage />} />
         <Route path="/legal/consent" element={<ConsentPage />} />
