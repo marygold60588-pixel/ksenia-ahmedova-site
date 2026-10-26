@@ -20,7 +20,7 @@ export const site: SiteContent = {
     lineThree: "Та же история.",
     lead: "В начале всё хорошо. Потом снова ожидание внимания, холодность, мысль, что дело в вас. Круг знаком. Меняется только имя. Здесь можно исследовать свои сценарии отношений через статьи и психологические практики.",
     primaryCta: { label: "Начать с бесплатной практики", href: "#free-practice" },
-    secondaryCta: { label: "Записаться на консультацию", href: "https://t.me/ksenia_akhmedova_bot?start=website" },
+    secondaryCta: { label: "Записаться на консультацию", href: "#request" },
     image: "/media/portraits/gaze-sage.png",
     imageAlt: "Ксения Ахмедова",
     mobileVideo: "/media/video/portrait-01.mp4",
@@ -96,7 +96,7 @@ export const site: SiteContent = {
   form: {
     kicker: "Заявка",
     title: "Напишите, с чего хотите начать.",
-    lead: "Можно записаться на первичную диагностическую консультацию или задать вопрос. Для быстрого обращения воспользуйтесь Telegram; форма ниже остаётся доступной.",
+    lead: "Можно записаться на первичную диагностическую консультацию или задать вопрос. Оставьте заявку на первичную консультацию: укажите удобный способ связи, и я отвечу вам. При желании можно обратиться через Telegram.",
     nameLabel: "Имя",
     contactLabel: "Как с вами связаться",
     contactHint: "Telegram, MAX или почта",
@@ -111,7 +111,7 @@ export const site: SiteContent = {
     submit: "Отправить",
     success: "Заявка принята. Я свяжусь с вами.",
     assistantLabel: "Записаться через Telegram",
-    assistantHint: "Быстрая запись и вопросы о консультации через Telegram",
+    assistantHint: "Telegram-ассистент помогает задать вопрос; для надёжной заявки воспользуйтесь формой выше.",
     assistantHref: "https://t.me/ksenia_akhmedova_bot?start=website",
     channels: [
       { value: "telegram", label: "Telegram" },
