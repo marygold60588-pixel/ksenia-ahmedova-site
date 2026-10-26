@@ -50,7 +50,7 @@ export const products: Product[] = [
     cta: "Начать с диагностики",
     href: "#request",
     image: "/media/portraits/writing-notebook.png",
-    status: "active",
+    status: "hidden",
     kind: "digital",
   },
   {
