@@ -10,7 +10,7 @@ import { assetUrl } from "@/lib/asset";
 export default function Diagnosis() {
   const product = getProduct("relationship-script-diagnosis");
 
-  if (!product || product.status === "hidden") return null;
+  if (!product || product.status !== "active") return null;
 
   const price = formatPrice(product.price, product.currency);
 
