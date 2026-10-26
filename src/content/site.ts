@@ -112,7 +112,7 @@ export const site: SiteContent = {
     success: "Заявка принята. Я свяжусь с вами.",
     assistantLabel: "Написать ассистенту",
     assistantHint: "Можно задать вопрос, узнать о консультации или оставить заявку",
-    assistantHref: "https://t.me/ksenia_akhmedova_bot",
+    assistantHref: "https://t.me/ksenia_akhmedova_bot?start=website",
     channels: [
       { value: "telegram", label: "Telegram" },
       { value: "max", label: "MAX" },
