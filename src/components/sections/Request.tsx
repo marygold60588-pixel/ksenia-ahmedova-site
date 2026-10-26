@@ -8,7 +8,7 @@ import { metrikaGoals, reachGoal } from "@/lib/metrika";
 
 export default function Request() {
   const { form } = site;
-  const [intent, setIntent] = useState<LeadIntent>("consultation");
+  const [intent, setIntent] = useState<LeadIntent>("diagnosis");
   const [channel, setChannel] = useState<ContactChannel>("telegram");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
