@@ -9,6 +9,7 @@ const ROUTES = [
   "/strah-otkaza-i-ugozhdenie",
   "/posle-otkaza-hochu-ischeznut",
   "/kogda-govoryat-net",
+  "/praktika-ne-otkazyvatsya-ot-sebya",
 ];
 
 const html = await readFile(path.join(DIST, "index.html"), "utf8");
