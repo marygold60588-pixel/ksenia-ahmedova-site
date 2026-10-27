@@ -24,8 +24,8 @@
   .scenario-feature-copy > .kicker,
   .scenario-feature-copy > h3,
   .scenario-feature-copy > .section-lead { margin-left: 0; margin-right: 0; }
-  .scenario-feature-media { grid-row: 4; }
-  .scenario-feature-cta { grid-row: 5; }
+  .scenario-feature-media { grid-row: 5; }
+  .scenario-feature-cta { grid-row: 6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .scenario-feature-media video { animation: none; }
