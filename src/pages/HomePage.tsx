@@ -7,7 +7,6 @@ import Hero from "@/components/sections/Hero";
 const WhoSees = lazy(() => import("@/components/sections/WhoSees"));
 const Consultation = lazy(() => import("@/components/sections/Consultation"));
 const Traces = lazy(() => import("@/components/sections/Traces"));
-const Diagnosis = lazy(() => import("@/components/sections/Diagnosis"));
 const FreePractice = lazy(() => import("@/components/sections/FreePractice"));
 const PaperCard = lazy(() => import("@/components/sections/PaperCard"));
 const Request = lazy(() => import("@/components/sections/Request"));
@@ -39,7 +38,6 @@ export default function HomePage() {
           <WhoSees />
           <Consultation />
           <Traces />
-          <Diagnosis />
           <FreePractice />
           <PaperCard />
           <Request />
