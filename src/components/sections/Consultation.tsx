@@ -26,9 +26,10 @@ export default function Consultation() {
           <p className="consult-closing">Врач-психотерапевт, психиатр. Более 20 лет в профессии, частная практика с 2014 года.</p>
           <p className="consult-closing">Первичная встреча: 60 минут · {formatPrice(consult.price, consult.currency)}</p>
         </ScrollReveal>
-        <Button href="#request" variant="solid">
-          {consultation.cta}
-        </Button>
+        <div className="consult-actions">
+          <Button href={site.form.assistantHref} variant="solid">Связаться с ассистентом в Telegram</Button>
+          <Button href="#request" variant="ghost">{consultation.cta}</Button>
+        </div>
       </GlassSurface>
     </section>
   );
