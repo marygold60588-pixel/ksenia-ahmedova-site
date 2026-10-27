@@ -3,7 +3,7 @@ import { reachGoal } from "@/lib/metrika";
 import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
-type Entry = { id: string; at: string; situation: string; did: string; wanted: string; other: string };
+type Entry = { id: string; at: string; situation: string; did: string; wanted: string; fear?: string; other: string };
 type Saved = { inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
 const KEY = "akhmedova.practice.self-refusal.v1";
 const blank: Inquiry = { scene: "", action: "", wish: "", fear: "", response: "", repeated: "" };
@@ -59,7 +59,7 @@ export default function InteractivePracticePage() {
   const [sound,setSound] = useState(false);
   const [reveal,setReveal] = useState(false);
   const [mapStage,setMapStage] = useState(0);
-  const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", other:"" });
+  const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", fear:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [notice,setNotice] = useState("");
   const started = useRef(false);
@@ -161,13 +161,15 @@ export default function InteractivePracticePage() {
       {tab==="journal"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ЛИЧНЫЙ ДНЕВНИК</span><span>{data.entries.length} записей</span></div>
         <h2>Замечать, а не исправлять себя</h2>
+        <p className="pr-hint">За семь дней достаточно даже одной записи. Дневник не требует ежедневного заполнения: важнее заметить различие между ожиданием и тем, что действительно произошло.</p>
         <p className="pr-hint">В течение недели, если захочется, возвращайтесь сюда после реальных ситуаций. Не нужно специально создавать конфликты или заставлять себя говорить «нет».</p>
         <label className="pr-label" htmlFor="pr-situation">Что произошло?</label><textarea id="pr-situation" rows={3} maxLength={2000} value={draft.situation} onChange={e=>setDraft(d=>({...d,situation:e.target.value}))} placeholder="Один конкретный момент…"/>
         <label className="pr-label" htmlFor="pr-did">Что вы сделали или сказали?</label><textarea id="pr-did" rows={2} maxLength={1500} value={draft.did} onChange={e=>setDraft(d=>({...d,did:e.target.value}))}/>
         <label className="pr-label" htmlFor="pr-wanted">Чего вам хотелось?</label><textarea id="pr-wanted" rows={2} maxLength={1500} value={draft.wanted} onChange={e=>setDraft(d=>({...d,wanted:e.target.value}))}/>
+        <label className="pr-label" htmlFor="pr-fear">Чего вы опасались? (необязательно)</label><textarea id="pr-fear" rows={2} maxLength={1500} value={draft.fear} onChange={e=>setDraft(d=>({...d,fear:e.target.value}))} placeholder="Какого ответа или последствия вы ожидали?"/>
         <label className="pr-label" htmlFor="pr-other">Что произошло в ответ? (необязательно)</label><textarea id="pr-other" rows={2} maxLength={1500} value={draft.other} onChange={e=>setDraft(d=>({...d,other:e.target.value}))}/>
         <div className="pr-actions"><span className="pr-hint">Записи сохраняются только в этом браузере.</span><button className="pr-primary" disabled={!draft.situation.trim()||!draft.wanted.trim()} onClick={saveEntry}>Сохранить запись ✧</button></div>
-        {data.entries.length>0&&<div className="pr-entrylist"><h3>Ваши наблюдения</h3>{data.entries.map((e,i)=><article className="pr-entry" key={e.id}><div className="pr-entrytitle">Наблюдение {i+1} · {new Date(e.at).toLocaleDateString("ru-RU")}</div><p>{e.situation}</p><p><strong>Я сделала:</strong> {e.did||"—"}</p><p><strong>Я хотела:</strong> {e.wanted}</p>{e.other&&<p><strong>В ответ:</strong> {e.other}</p>}<button className="pr-delete" onClick={()=>setData(d=>({...d,entries:d.entries.filter(x=>x.id!==e.id)}))}>Удалить запись</button></article>)}</div>}
+        {data.entries.length>0&&<div className="pr-entrylist"><h3>Ваши наблюдения</h3>{data.entries.map((e,i)=><article className="pr-entry" key={e.id}><div className="pr-entrytitle">Наблюдение {i+1} · {new Date(e.at).toLocaleDateString("ru-RU")}</div><p>{e.situation}</p><p><strong>Я сделала:</strong> {e.did||"—"}</p><p><strong>Мне хотелось:</strong> {e.wanted}</p>{e.fear&&<p><strong>Я опасалась / опасался:</strong> {e.fear}</p>}{e.other&&<p><strong>В ответ:</strong> {e.other}</p>}<button className="pr-delete" onClick={()=>setData(d=>({...d,entries:d.entries.filter(x=>x.id!==e.id)}))}>Удалить запись</button></article>)}</div>}
       </section>}
       {tab==="map"&&<section className="pr-panel pr-map">
         <div className="pr-sectionhead"><span>ЛИЧНАЯ КАРТА НАБЛЮДЕНИЙ</span><span>{data.entries.length} записей в дневнике</span></div>
