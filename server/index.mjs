@@ -1002,6 +1002,63 @@ async function handleLeads(req, res) {
   });
 }
 
+// Anonymous practice funnel counts and voluntary feedback; no diary answers are transmitted.
+const PRACTICE_EVENTS_FILE = path.resolve(process.cwd(), "data", "practice-events.jsonl");
+const PRACTICE_FEEDBACK_FILE = path.resolve(process.cwd(), "data", "practice-feedback.jsonl");
+const PRACTICE_EVENTS = new Set(["open", "start", "complete"]);
+const practiceHits = new Map();
+function practiceRateLimited(req) {
+  const ip = clientIp(req);
+  const now = Date.now();
+  const hits = (practiceHits.get(ip) || []).filter(t => now - t < 60000);
+  practiceHits.set(ip, [...hits, now]);
+  return hits.length >= 20;
+}
+async function handlePractice(req, res, urlPath) {
+  if (originDenied(req)) return sendJson(req, res, 403, { ok:false });
+  if (urlPath === "/api/practice/stats") {
+    if (req.method !== "GET") return sendJson(req, res, 405, { ok:false });
+    const counts = { open:0, start:0, complete:0, feedback:0 };
+    try {
+      const raw = await fs.readFile(PRACTICE_EVENTS_FILE, "utf8");
+      for (const line of raw.split("\n")) {
+        try { const e=JSON.parse(line); if (Object.hasOwn(counts,e.event)) counts[e.event]++; } catch {}
+      }
+    } catch (error) { if (error.code !== "ENOENT") return sendJson(req,res,500,{ok:false}); }
+    try {
+      const raw = await fs.readFile(PRACTICE_FEEDBACK_FILE, "utf8");
+      counts.feedback = raw.split("\n").filter(Boolean).length;
+    } catch (error) { if (error.code !== "ENOENT") return sendJson(req,res,500,{ok:false}); }
+    return sendJson(req,res,200,{ok:true,counts});
+  }
+  if (req.method !== "POST") return sendJson(req,res,405,{ok:false});
+  if (practiceRateLimited(req)) return sendJson(req,res,429,{ok:false});
+  let data;
+  try { data=JSON.parse(await readBody(req)); } catch { return sendJson(req,res,400,{ok:false}); }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return sendJson(req,res,400,{ok:false});
+  if (urlPath === "/api/practice/event") {
+    if (!PRACTICE_EVENTS.has(data.event)) return sendJson(req,res,400,{ok:false});
+    try {
+      await fs.mkdir(path.dirname(PRACTICE_EVENTS_FILE),{recursive:true});
+      await fs.appendFile(PRACTICE_EVENTS_FILE,JSON.stringify({event:data.event,at:new Date().toISOString()})+"\n","utf8");
+      return sendJson(req,res,200,{ok:true});
+    } catch { return sendJson(req,res,500,{ok:false}); }
+  }
+  if (urlPath === "/api/practice/feedback") {
+    const feedback = typeof data.feedback === "string" ? sanitize(data.feedback,2500) : "";
+    const criticism = typeof data.criticism === "string" ? sanitize(data.criticism,2500) : "";
+    const usefulness = ["new","organized","little","none",""].includes(data.usefulness) ? data.usefulness : "";
+    if (!feedback && !criticism && !usefulness) return sendJson(req,res,400,{ok:false});
+    const record = { id:crypto.randomUUID(), at:new Date().toISOString(), feedback, criticism, usefulness, consent:Boolean(data.consent) };
+    try {
+      await fs.mkdir(path.dirname(PRACTICE_FEEDBACK_FILE),{recursive:true});
+      await fs.appendFile(PRACTICE_FEEDBACK_FILE,JSON.stringify(record)+"\n","utf8");
+      return sendJson(req,res,200,{ok:true});
+    } catch { return sendJson(req,res,500,{ok:false}); }
+  }
+  return sendJson(req,res,404,{ok:false});
+}
+
 async function handleOutbound(req, res) {
   if (req.method !== "GET") {
     sendJson(req, res, 405, { ok: false });
@@ -1112,6 +1169,11 @@ const server = http.createServer(async (req, res) => {
 
     if (urlPath === "/api/leads" || urlPath.startsWith("/api/leads?")) {
       await handleLeads(req, res);
+      return;
+    }
+
+    if (urlPath.startsWith("/api/practice/")) {
+      await handlePractice(req, res, urlPath.split("?")[0]);
       return;
     }
 
