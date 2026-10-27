@@ -4,7 +4,7 @@ import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
 type Entry = { id: string; at: string; situation: string; did: string; wanted: string; other: string };
-type Saved = { inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string };
+type Saved = { inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
 const KEY = "akhmedova.practice.self-refusal.v1";
 const blank: Inquiry = { scene: "", action: "", wish: "", fear: "", response: "", repeated: "" };
 const steps = [
@@ -15,7 +15,7 @@ const steps = [
   { key: "response", title: "Реальность отношений", question: "Вы уже пробовали говорить этому человеку о своих желаниях? Что происходило в ответ?", hint: "Важно не только то, чего вы опасаетесь, но и как человек действительно реагирует." },
   { key: "repeated", title: "Вопрос к себе", question: "Что в этой истории повторяется, а что, возможно, было иначе?", hint: "Если это единичная ситуация, так и напишите." },
 ] as const;
-const initial: Saved = { inquiry: blank, entries: [], feedback: "", criticism: "", usefulness: "" };
+const initial: Saved = { inquiry: blank, entries: [], feedback: "", criticism: "", usefulness: "", insight: "" };
 function load(): Saved {
   try {
     const data = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -58,6 +58,7 @@ export default function InteractivePracticePage() {
   const [step,setStep] = useState(0);
   const [sound,setSound] = useState(false);
   const [reveal,setReveal] = useState(false);
+  const [mapStage,setMapStage] = useState(0);
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [notice,setNotice] = useState("");
@@ -117,7 +118,7 @@ export default function InteractivePracticePage() {
         <h2 id="pr-question">{steps[step].title}</h2><p className="pr-question">{steps[step].question}</p><p className="pr-hint">{steps[step].hint}</p>
         <label className="pr-label" htmlFor="pr-answer">Ваши слова</label>
         <textarea id="pr-answer" rows={5} maxLength={3000} value={data.inquiry[steps[step].key]} onChange={e=>{recordStart();updateInquiry(steps[step].key,e.target.value);}} placeholder="Можно начать с нескольких слов…"/>
-        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else {recordFinish();setReveal(true);setTab("map");}}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
+        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else {recordFinish();setReveal(true);setMapStage(v=>v+1);setTab("map");}}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
       </section>}
       {tab==="journal"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ЛИЧНЫЙ ДНЕВНИК</span><span>{data.entries.length} записей</span></div>
@@ -132,7 +133,7 @@ export default function InteractivePracticePage() {
       </section>}
       {tab==="map"&&<section className="pr-panel pr-map">
         <div className="pr-sectionhead"><span>ЛИЧНАЯ КАРТА НАБЛЮДЕНИЙ</span><span>{data.entries.length} записей в дневнике</span></div>
-        <div className={reveal?"pr-threads pr-threads-reveal":"pr-threads"}>{makeThreads(Math.min(5,Math.floor(filled/2)+data.entries.length))}</div>
+        <div key={mapStage} className={reveal?"pr-threads pr-threads-reveal":"pr-threads"}>{makeThreads(Math.min(5,Math.floor(filled/2)+data.entries.length))}</div>
         <h2>Нити вашего опыта</h2>
         <p className="pr-hint">Здесь ваши слова складываются в последовательность. Это приглашение к размышлению, а не диагноз и не окончательный вывод о вас.</p>
         {!completed&&<p className="pr-prompt">Вы пока ответили на {filled} из {steps.length} вопросов. Можно посмотреть предварительную карту или вернуться к исследованию.</p>}
@@ -140,20 +141,37 @@ export default function InteractivePracticePage() {
         {data.inquiry.wish.trim()&&<div className="pr-contrast"><div><small>ЧЕГО МНЕ ХОТЕЛОСЬ</small><p>{data.inquiry.wish}</p></div><div><small>ЧТО Я СДЕЛАЛА / СДЕЛАЛ</small><p>{data.inquiry.action||"Пока нет ответа"}</p></div></div>}
         {data.entries.length>0&&<div className="pr-insight"><span>ИЗ ДНЕВНИКА · {data.entries.length} НАБЛЮДЕНИЙ</span><p>В последней записи вы хотели: «{data.entries[data.entries.length-1].wanted}». Что общего с вашей первой ситуацией — а что отличается? Необязательно находить единый паттерн.</p></div>}
         {completed&&<div className="pr-reflection" aria-label="Развёрнутый разбор вашей ситуации"><h3>Ваша история: пять точек внимания</h3><p className="pr-hint">Это разбор по вашим собственным ответам. Он не устанавливает бессознательные причины и не заменяет разговор с психотерапевтом.</p>{reflectionSections(data.inquiry).map(section=><article className="pr-reflection-item" key={section.title}><h4>{section.title}</h4><p>{section.body}</p></article>)}<div className="pr-insight"><span>ЧТО МОЖНО ВЗЯТЬ С СОБОЙ</span><p>В ближайшие дни не нужно заставлять себя говорить «нет». Попробуйте просто заметить момент, когда возникает желание, и тот момент, когда вы решаете его скрыть. Что между ними происходит? Какие чувства возникают? Можно записать один такой эпизод в дневник.</p></div><p className="pr-hint">Ваши записи остаются на этом устройстве. Вы можете вернуться к ним позже или удалить их.</p></div>}
+        {completed&&<div className="pr-own-insight">
+          <div className="pr-eyebrow">ВАШЕ ОТКРЫТИЕ</div>
+          <h3>Что вы сейчас видите иначе?</h3>
+          <p>Вернитесь к собственным словам. <strong>Вы хотели:</strong> «{data.inquiry.wish}». <strong>Но поступили так:</strong> «{data.inquiry.action}». <strong>Возможно, вас останавливало ожидание:</strong> «{data.inquiry.fear}».</p>
+          <p>Это ещё не ответ о причинах. Но, возможно, теперь вы видите связь, которую прежде не замечали. Что для вас оказалось самым неожиданным? Что хочется понять глубже?</p>
+          <label className="pr-label" htmlFor="pr-my-insight">Сформулируйте своё открытие — так, как сказали бы самому себе</label>
+          <textarea id="pr-my-insight" rows={4} maxLength={2500} placeholder="Сейчас я замечаю, что…" value={data.insight||""} onChange={e=>setData(d=>({...d,insight:e.target.value}))}/>
+          <p className="pr-hint">Здесь может быть и сомнение, и несогласие с разбором. Важно то, что вы сами думаете об этой ситуации.</p>
+        </div>}
+        {completed&&<div className="pr-next-week">
+          <div className="pr-eyebrow">СЛЕДУЮЩИЕ СЕМЬ ДНЕЙ</div>
+          <h3>Пусть это открытие не останется только мыслью</h3>
+          <p>Понимание иногда приходит раньше, чем меняется привычная реакция. Чтобы заметить, как она возникает в жизни, попробуйте в течение семи дней возвращаться к короткому дневнику. Не нужно специально спорить, отказывать или испытывать себя.</p>
+          <p>Когда обнаружите знакомую ситуацию, запишите: чего вы хотели, что сделали, чего опасались и что произошло в действительности. Сравнивая записи, можно увидеть не только повторения, но и моменты, когда у вас уже получалось выбирать иначе.</p>
+          <button className="pr-primary" type="button" onClick={()=>{chime();setTab("journal");window.scrollTo({top:0,behavior:"smooth"});}}>Начать семидневное наблюдение →</button>
+        </div>}
         {!completed&&<p className="pr-hint">Для развёрнутой карты ответьте на все шесть вопросов в разделе «Исследование».</p>}
-        <div className="pr-actions"><button className="pr-ghost" onClick={()=>setTab("journal")}>Перейти в дневник</button><button className="pr-primary" onClick={()=>{recordFinish();chime();setTab("feedback");}}>Завершить и поделиться впечатлением →</button></div>
+        <div className="pr-feedback-invite"><div className="pr-eyebrow">ПОСЛЕ ПРАКТИКИ</div><h3>Ваш взгляд может стать продолжением этой работы</h3><p>Что в этой встрече с собой оказалось важным? А что не откликнулось? Мне интересно услышать не только то, что понравилось, но и то, чего здесь не хватило. Это помогает делать практику глубже и точнее.</p><button className="pr-primary" onClick={()=>{recordFinish();chime();setTab("feedback");window.scrollTo({top:0,behavior:"smooth"});}}>Поделиться своим открытием →</button></div>
       </section>}
       {tab==="feedback"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ВАШ ОПЫТ</span><span>НЕЗАВИСИМАЯ ОБРАТНАЯ СВЯЗЬ</span></div><h2>Что осталось с вами?</h2>
+        <p className="pr-hint">Ваши слова важны. Можно поделиться тем, что открылось, или рассказать, почему практика не откликнулась. Здесь не нужны правильные ответы и вежливые похвалы.</p>
         <p className="pr-hint">Можно ответить «ничего». Критика важнее вежливых похвал.</p>
-        <label className="pr-label" htmlFor="pr-insight">Что вы заметили или поняли о себе? Если ничего нового — так и напишите.</label><textarea id="pr-insight" rows={3} maxLength={2500} value={data.feedback} onChange={e=>setData(d=>({...d,feedback:e.target.value}))}/>
+        <label className="pr-label" htmlFor="pr-insight">Какая мысль или чувство остались с вами после практики?</label><textarea id="pr-insight" rows={3} maxLength={2500} value={data.feedback} onChange={e=>setData(d=>({...d,feedback:e.target.value}))}/>
         <label className="pr-label" htmlFor="pr-usefulness">Насколько полезной оказалась практика?</label><select id="pr-usefulness" value={data.usefulness} onChange={e=>setData(d=>({...d,usefulness:e.target.value}))}><option value="">Выберите ответ</option><option value="new">Заметила(а) что-то новое</option><option value="organized">Помогла упорядочить известное</option><option value="little">Интересно, но мало пользы</option><option value="none">Не получила(а) пользы</option></select>
         <label className="pr-label" htmlFor="pr-criticism">Что было лишним, раздражающим или непонятным?</label><textarea id="pr-criticism" rows={3} maxLength={2500} value={data.criticism} onChange={e=>setData(d=>({...d,criticism:e.target.value}))}/>
-        <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой ответ как анонимный отзыв после отдельного согласования текста.</label>
+        <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой отклик в обезличенном виде после отдельного согласования текста со мной. Это необязательно.</label>
         <p className="pr-hint">Ответы сохраняются только в вашем браузере и не отправляются автору автоматически. Если захотите поделиться впечатлением, используйте ссылку на Telegram ниже — без личных записей из практики.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
-        <p className="pr-hint">Хотите помочь улучшить пилот? Напишите автору в Telegram, что было полезным, а что нет. Не пересылайте личные записи из дневника без необходимости.</p>
-        <a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Оставить отзыв в Telegram →</a>
+        <p className="pr-hint">Чтобы отклик дошёл до автора, отправьте его в Telegram. Поля выше сохраняются только в вашем браузере. Не пересылайте личные записи из дневника.</p>
+        <a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Передать своё впечатление →</a>
         <p className="pr-hint">Если захотите обсудить свою ситуацию в психотерапии, напишите для записи на консультацию по той же ссылке.</p>
       </section>}
       {notice&&<p className="pr-notice" role="status">{notice}</p>}
