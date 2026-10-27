@@ -34,6 +34,16 @@ function gentleObservation(q: Inquiry) {
   }
   return "Вы описали разницу между тем, что сделали, и тем, чего хотели. Пока это не объяснение причин, а точка наблюдения: что именно мешало вашему желанию получить место в отношениях?";
 }
+function reflectionSections(q: Inquiry) {
+  const quoted = (value: string) => value.trim() || "Вы пока не описали этот момент.";
+  return [
+    {title:"01 · Сцена, в которой вы оказались",body:`Вы вспомнили: «${quoted(q.scene)}». Это конкретная ситуация, а не определение всей вашей личности. Полезно удержать её подробности: с кем вы были, чего ожидали, что произошло до вашего решения.`},
+    {title:"02 · Где разошлись желание и поступок",body:`Ваше желание: «${quoted(q.wish)}». Ваше действие: «${quoted(q.action)}». Между ними есть расстояние. Попробуйте заметить, в какой именно момент вы решили поступить иначе и что тогда стало для вас важнее собственного желания.`},
+    {title:"03 · Какую цену вы предполагали",body:`Вы написали о возможном последствии: «${quoted(q.fear)}». Это ваше ожидание в той ситуации. Оно могло опираться на реальный опыт, прошлые отношения или неопределённость. Пока мы не знаем, какой из вариантов ближе.`},
+    {title:"04 · Что действительно происходило между вами",body:`Ваш опыт ответов другого человека: «${quoted(q.response)}». Сопоставьте это с предыдущим ожиданием. Есть ли подтверждения опасению? Или вы заранее отказались от желания, ещё не узнав реакцию другого? Если ответ другого действительно был болезненным, важно не возлагать всю ответственность на себя.`},
+    {title:"05 · Повторение или особенный случай",body:`О повторении вы заметили: «${quoted(q.repeated)}». Похожий эпизод ещё не означает устойчивый сценарий. Спросите себя, что здесь знакомо, а что отличается от прежних ситуаций.`},
+  ];
+}
 function makeThreads(count: number) {
   const points = [[160,28],[267,84],[238,193],[82,193],[53,84],[160,118]];
   return <svg className="pr-jewel" viewBox="0 0 320 230" role="img" aria-label="Декоративный узор из золотых нитей, который раскрывается по мере записей">
@@ -47,6 +57,7 @@ export default function InteractivePracticePage() {
   const [tab,setTab] = useState<"inquiry"|"journal"|"map"|"feedback">("inquiry");
   const [step,setStep] = useState(0);
   const [sound,setSound] = useState(false);
+  const [reveal,setReveal] = useState(false);
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [notice,setNotice] = useState("");
@@ -92,10 +103,11 @@ export default function InteractivePracticePage() {
     <div className="pr-halo" aria-hidden="true"/>
     <header className="pr-top"><a href="/" className="pr-brand">Ксения Ахмедова <span>· психологические практики</span></a><button type="button" className="pr-sound" onClick={()=>setSound(v=>!v)} aria-pressed={sound}>{sound?"♫ Звук включён":"♩ Включить звук"}</button></header>
     <main className="pr-shell">
-      <div className="pr-eyebrow">ИНТЕРАКТИВНАЯ ПРАКТИКА · БЕСПЛАТНЫЙ ПИЛОТ</div>
+      <div className="pr-eyebrow">ИНТЕРАКТИВНАЯ ПРАКТИКА · СВОБОДНЫЙ ДОСТУП</div>
       <h1>Почему я снова <em>отказываюсь от себя?</em></h1>
       <p className="pr-intro">От страха чужого «нет» — к вниманию к собственному желанию. Здесь нет правильных ответов и необходимости что-то менять прямо сейчас.</p>
       <div className="pr-ornament" aria-hidden="true">✧ ───────── ✧</div>
+      <p className="pr-hint">Шесть шагов. Ваши ответы постепенно соединятся в личную карту наблюдений. Звук необязателен — его можно включить в правом верхнем углу.</p>
       <nav className="pr-tabs" aria-label="Разделы практики">
         {([{id:"inquiry",name:"Исследование"},{id:"journal",name:"Дневник"},{id:"map",name:"Моя карта"},{id:"feedback",name:"Обратная связь"}] as const).map(t=><button type="button" key={t.id} className={tab===t.id?"active":""} onClick={()=>{setTab(t.id);setNotice("");}} aria-current={tab===t.id?"page":undefined}>{t.name}</button>)}
       </nav>
@@ -105,7 +117,7 @@ export default function InteractivePracticePage() {
         <h2 id="pr-question">{steps[step].title}</h2><p className="pr-question">{steps[step].question}</p><p className="pr-hint">{steps[step].hint}</p>
         <label className="pr-label" htmlFor="pr-answer">Ваши слова</label>
         <textarea id="pr-answer" rows={5} maxLength={3000} value={data.inquiry[steps[step].key]} onChange={e=>{recordStart();updateInquiry(steps[step].key,e.target.value);}} placeholder="Можно начать с нескольких слов…"/>
-        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else {recordFinish();setTab("map");}}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
+        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else {recordFinish();setReveal(true);setTab("map");}}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
       </section>}
       {tab==="journal"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ЛИЧНЫЙ ДНЕВНИК</span><span>{data.entries.length} записей</span></div>
@@ -120,14 +132,15 @@ export default function InteractivePracticePage() {
       </section>}
       {tab==="map"&&<section className="pr-panel pr-map">
         <div className="pr-sectionhead"><span>ЛИЧНАЯ КАРТА НАБЛЮДЕНИЙ</span><span>{data.entries.length} записей в дневнике</span></div>
-        {makeThreads(Math.min(5,Math.floor(filled/2)+data.entries.length))}
+        <div className={reveal?"pr-threads pr-threads-reveal":"pr-threads"}>{makeThreads(Math.min(5,Math.floor(filled/2)+data.entries.length))}</div>
         <h2>Нити вашего опыта</h2>
-        <p className="pr-hint">Это не диагноз и не готовая истина о вас. Карта помогает сопоставить ваши собственные слова.</p>
+        <p className="pr-hint">Здесь ваши слова складываются в последовательность. Это приглашение к размышлению, а не диагноз и не окончательный вывод о вас.</p>
         {!completed&&<p className="pr-prompt">Вы пока ответили на {filled} из {steps.length} вопросов. Можно посмотреть предварительную карту или вернуться к исследованию.</p>}
         <div className="pr-insight"><span>ВОЗМОЖНО, СТОИТ ЗАДЕРЖАТЬСЯ ЗДЕСЬ</span><p>{observation}</p></div>
         {data.inquiry.wish.trim()&&<div className="pr-contrast"><div><small>ЧЕГО МНЕ ХОТЕЛОСЬ</small><p>{data.inquiry.wish}</p></div><div><small>ЧТО Я СДЕЛАЛА / СДЕЛАЛ</small><p>{data.inquiry.action||"Пока нет ответа"}</p></div></div>}
         {data.entries.length>0&&<div className="pr-insight"><span>ИЗ ДНЕВНИКА · {data.entries.length} НАБЛЮДЕНИЙ</span><p>В последней записи вы хотели: «{data.entries[data.entries.length-1].wanted}». Что общего с вашей первой ситуацией — а что отличается? Необязательно находить единый паттерн.</p></div>}
-        <p className="pr-hint">В этой пилотной версии уточнения основаны на ограниченных правилах, а не на ИИ-анализе. Не приписывайте карте знания, которых в ней нет.</p>
+        {completed&&<div className="pr-reflection" aria-label="Развёрнутый разбор вашей ситуации"><h3>Ваша история: пять точек внимания</h3><p className="pr-hint">Это разбор по вашим собственным ответам. Он не устанавливает бессознательные причины и не заменяет разговор с психотерапевтом.</p>{reflectionSections(data.inquiry).map(section=><article className="pr-reflection-item" key={section.title}><h4>{section.title}</h4><p>{section.body}</p></article>)}<div className="pr-insight"><span>ЧТО МОЖНО ВЗЯТЬ С СОБОЙ</span><p>В ближайшие дни не нужно заставлять себя говорить «нет». Попробуйте просто заметить момент, когда возникает желание, и тот момент, когда вы решаете его скрыть. Что между ними происходит? Какие чувства возникают? Можно записать один такой эпизод в дневник.</p></div><p className="pr-hint">Ваши записи остаются на этом устройстве. Вы можете вернуться к ним позже или удалить их.</p></div>}
+        {!completed&&<p className="pr-hint">Для развёрнутой карты ответьте на все шесть вопросов в разделе «Исследование».</p>}
         <div className="pr-actions"><button className="pr-ghost" onClick={()=>setTab("journal")}>Перейти в дневник</button><button className="pr-primary" onClick={()=>{recordFinish();chime();setTab("feedback");}}>Завершить и поделиться впечатлением →</button></div>
       </section>}
       {tab==="feedback"&&<section className="pr-panel">
@@ -137,7 +150,7 @@ export default function InteractivePracticePage() {
         <label className="pr-label" htmlFor="pr-usefulness">Насколько полезной оказалась практика?</label><select id="pr-usefulness" value={data.usefulness} onChange={e=>setData(d=>({...d,usefulness:e.target.value}))}><option value="">Выберите ответ</option><option value="new">Заметила(а) что-то новое</option><option value="organized">Помогла упорядочить известное</option><option value="little">Интересно, но мало пользы</option><option value="none">Не получила(а) пользы</option></select>
         <label className="pr-label" htmlFor="pr-criticism">Что было лишним, раздражающим или непонятным?</label><textarea id="pr-criticism" rows={3} maxLength={2500} value={data.criticism} onChange={e=>setData(d=>({...d,criticism:e.target.value}))}/>
         <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой ответ как анонимный отзыв после отдельного согласования текста.</label>
-        <p className="pr-hint">Пока это локальный прототип: ответы не отправляются автору и не публикуются. Вы можете экспортировать их для добровольной передачи.</p>
+        <p className="pr-hint">Ответы сохраняются только в вашем браузере и не отправляются автору автоматически. Если захотите поделиться впечатлением, используйте ссылку на Telegram ниже — без личных записей из практики.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
         <p className="pr-hint">Хотите помочь улучшить пилот? Напишите автору в Telegram, что было полезным, а что нет. Не пересылайте личные записи из дневника без необходимости.</p>
         <a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Оставить отзыв в Telegram →</a>
