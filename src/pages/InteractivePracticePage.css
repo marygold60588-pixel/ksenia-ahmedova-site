@@ -20,3 +20,15 @@
 @keyframes pr-point-enter{from{opacity:0}to{opacity:1}}
 @keyframes pr-map-appear{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.pr-root .pr-ornament,.pr-root .pr-threads .pr-jewel,.pr-root .pr-threads .pr-jewel path,.pr-root .pr-threads .pr-jewel g,.pr-root .pr-reflection-item{animation:none!important}}
+
+/* Immersive finale and guided continuation */
+.pr-own-insight,.pr-next-week,.pr-feedback-invite{margin:32px 0 16px;padding:clamp(22px,4vw,34px);border:1px solid #c7a57377;border-radius:20px;background:linear-gradient(135deg,#5d49342e,#ffffff05);text-align:left;animation:pr-map-appear .85s ease-out both}
+.pr-next-week{background:linear-gradient(145deg,#302b27,#1d2025)}
+.pr-own-insight h3,.pr-next-week h3,.pr-feedback-invite h3{font:400 clamp(25px,4vw,35px)/1.25 Georgia,serif;color:#f5ddba;margin:13px 0 18px}
+.pr-own-insight p,.pr-next-week p,.pr-feedback-invite p{font:17px/1.8 Georgia,serif;color:#e3d6c6;overflow-wrap:anywhere}
+.pr-own-insight strong{color:#f4d8a4;font-weight:normal}
+.pr-threads-reveal{animation:pr-gold-arrival 2.8s cubic-bezier(.2,.8,.2,1) both}
+.pr-threads-reveal .pr-jewel path{animation:pr-thread-draw 3.2s cubic-bezier(.3,.7,.2,1) both;stroke-width:2;filter:drop-shadow(0 0 5px #f2cc8b)}
+.pr-threads-reveal .pr-jewel circle{animation:pr-point-enter 1.5s ease-out both}
+@keyframes pr-gold-arrival{0%{opacity:0;transform:scale(.82);filter:brightness(.45)}55%{opacity:1;filter:brightness(1.6)}100%{opacity:1;transform:scale(1);filter:brightness(1)}}
+@media(prefers-reduced-motion:reduce){.pr-own-insight,.pr-next-week,.pr-feedback-invite,.pr-threads-reveal,.pr-threads-reveal .pr-jewel path,.pr-threads-reveal .pr-jewel circle{animation:none!important}}
