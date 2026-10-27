@@ -62,6 +62,8 @@ export default function InteractivePracticePage() {
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", fear:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [feedbackConsent,setFeedbackConsent] = useState(false);
+  const [aiConsent,setAiConsent] = useState(false);
+  const [aiAdult,setAiAdult] = useState(false);
   const [notice,setNotice] = useState("");
   const [feedbackSending,setFeedbackSending] = useState(false);
   const [feedbackSent,setFeedbackSent] = useState(false);
@@ -204,6 +206,7 @@ export default function InteractivePracticePage() {
           <textarea id="pr-my-insight" rows={4} maxLength={2500} placeholder="Сейчас я замечаю, что…" value={data.insight||""} onChange={e=>setData(d=>({...d,insight:e.target.value}))}/>
           <p className="pr-hint">Здесь может быть и сомнение, и несогласие с разбором. Важно то, что вы сами думаете об этой ситуации.</p>
         </div>}
+        {completed&&<section className="pr-reflection" aria-label="Подготовка индивидуальной интерпретации"><div className="pr-eyebrow">ИНДИВИДУАЛЬНЫЙ ДИАЛОГ</div><h3>Интерпретация с помощью ИИ</h3><p>В будущей версии ИИ сможет предложить гипотезу по вашей ситуации, а вы сможете согласиться, возразить или уточнить её. Сейчас внешняя обработка ответов отключена: ваши записи никуда не отправляются.</p><p className="pr-hint">Для включения потребуется отдельное добровольное согласие с указанием провайдера, страны обработки, целей и срока хранения. До юридической и технической проверки этот модуль недоступен.</p><label className="pr-check"><input type="checkbox" checked={aiAdult} onChange={e=>setAiAdult(e.target.checked)}/> Мне исполнилось 18 лет.</label><label className="pr-check"><input type="checkbox" checked={aiConsent} onChange={e=>setAiConsent(e.target.checked)}/> Я понимаю, что для ИИ-анализа потребуется передача выбранных ответов внешнему провайдеру. Это предварительное ознакомление, не разрешение на передачу данных.</label><button className="pr-ghost" type="button" disabled>ИИ-интерпретация пока недоступна</button></section>}
         {completed&&<section className="pr-reflection"><h3>Проверьте возможное противоречие</h3><p>Возможно, отказ от желания одновременно помогал избежать неприятной реакции и оставлял вас с неудовлетворённостью. Это только гипотеза. Насколько она подходит?</p><label className="pr-label" htmlFor="pr-hypothesis-reaction">Ваша реакция</label><textarea id="pr-hypothesis-reaction" rows={3} value={data.hypothesisReaction||""} onChange={e=>setData(d=>({...d,hypothesisReaction:e.target.value}))} placeholder="Подходит, отчасти или совсем нет? Почему?"/></section>}
         {completed&&<section className="pr-reflection" aria-label="Углублённое исследование">
           <div className="pr-eyebrow">ГЛУБЖЕ В СВОЙ СЦЕНАРИЙ</div>
