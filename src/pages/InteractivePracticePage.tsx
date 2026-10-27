@@ -4,7 +4,7 @@ import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
 type Entry = { id: string; at: string; situation: string; did: string; wanted: string; fear?: string; other: string };
-type Saved = { inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
+type Saved = { depth?: {protection?:string;relief?:string;feeling?:string;cost?:string;next?:string}; inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
 const KEY = "akhmedova.practice.self-refusal.v1";
 const blank: Inquiry = { scene: "", action: "", wish: "", fear: "", response: "", repeated: "" };
 const steps = [
@@ -204,6 +204,36 @@ export default function InteractivePracticePage() {
           <textarea id="pr-my-insight" rows={4} maxLength={2500} placeholder="Сейчас я замечаю, что…" value={data.insight||""} onChange={e=>setData(d=>({...d,insight:e.target.value}))}/>
           <p className="pr-hint">Здесь может быть и сомнение, и несогласие с разбором. Важно то, что вы сами думаете об этой ситуации.</p>
         </div>}
+        {completed&&<section className="pr-reflection" aria-label="Углублённое исследование">
+          <div className="pr-eyebrow">ГЛУБЖЕ В СВОЙ СЦЕНАРИЙ</div>
+          <h3>Что защищает ваш привычный способ поступать?</h3>
+          <p className="pr-hint">Здесь важно не только увидеть, чего вы лишаетесь, но и понять, от чего привычная реакция вас оберегает. Это исследование, а не диагноз.</p>
+          <h4>1. Что могло стать опасным?</h4>
+          <p>Представьте, что вы произнесли своё желание вслух. Что именно в этом моменте кажется наиболее уязвимым: возможный отказ, чужое раздражение, ощущение зависимости, страх быть неудобным — или что-то другое?</p>
+          <textarea rows={3} maxLength={2000} aria-label="Что могло стать опасным" value={data.depth?.protection||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,protection:e.target.value}}))}/>
+          <h4>2. Что вы получаете, когда уступаете?</h4>
+          <p>Возникает ли хотя бы краткое облегчение? Например, вы избегаете конфликта или сохраняете ощущение контроля. Возможно, облегчения нет — это тоже важное наблюдение.</p>
+          <textarea rows={3} maxLength={2000} aria-label="Облегчение от уступки" value={data.depth?.relief||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,relief:e.target.value}}))}/>
+          <h4>3. Какое чувство остаётся невысказанным?</h4>
+          <p>Была ли там злость, обида, тоска, нежность, потребность в близости? Что было труднее всего позволить себе почувствовать или показать?</p>
+          <textarea rows={3} maxLength={2000} aria-label="Невысказанное чувство" value={data.depth?.feeling||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,feeling:e.target.value}}))}/>
+          <h4>4. Какую цену вы платите?</h4>
+          <p>Что вы сохраняете таким решением — и что постепенно теряете? Попробуйте удержать обе стороны, не обвиняя себя.</p>
+          <textarea rows={3} maxLength={2000} aria-label="Цена защиты" value={data.depth?.cost||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,cost:e.target.value}}))}/>
+          <h4>5. Что могло бы стать маленьким изменением?</h4>
+          <p>Как можно дать своему желанию немного больше места, не подвергая себя опасности? Иногда первый шаг — только заметить желание, не заставляя себя действовать.</p>
+          <textarea rows={3} maxLength={2000} aria-label="Бережный следующий шаг" value={data.depth?.next||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,next:e.target.value}}))}/>
+          <div className="pr-insight"><span>ВАША КАРТА ВНУТРЕННЕГО КОНФЛИКТА</span>
+            <p><strong>Моё желание:</strong> {data.inquiry.wish}</p>
+            <p><strong>Мой страх:</strong> {data.inquiry.fear}</p>
+            {data.depth?.protection&&<p><strong>От чего защищаюсь:</strong> {data.depth.protection}</p>}
+            {data.depth?.relief&&<p><strong>Что даёт мне защита:</strong> {data.depth.relief}</p>}
+            {data.depth?.feeling&&<p><strong>Какое чувство остаётся без места:</strong> {data.depth.feeling}</p>}
+            {data.depth?.cost&&<p><strong>Какую цену плачу:</strong> {data.depth.cost}</p>}
+            {data.depth?.next&&<p><strong>Мой бережный шаг:</strong> {data.depth.next}</p>}
+            <p className="pr-hint">Это ваши слова, а не заключение о личности. Проверьте, насколько такая связь соответствует вашему опыту.</p>
+          </div>
+        </section>}
         {completed&&<div className="pr-next-week">
           <div className="pr-eyebrow">СЛЕДУЮЩИЕ СЕМЬ ДНЕЙ</div>
           <h3>Пусть это открытие не останется только мыслью</h3>
