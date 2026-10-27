@@ -1,8 +1,13 @@
+/* Allow the feature to use the full section width; the original 36rem cap crushed both columns. */
+.home-practice .home-practice-inner { max-width: none; width: 100%; }
+.home-practice-inner > .kicker,
+.home-practice-inner > h2,
+.home-practice-inner > .section-lead { max-width: 36rem; }
 /* Isolated styling for the scenario video; existing sections are unchanged. */
 .scenario-feature {
   margin-top: 32px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr);
+  grid-template-columns: minmax(290px, 0.95fr) minmax(0, 1.55fr);
   gap: clamp(20px, 4vw, 64px);
   align-items: center;
 }
