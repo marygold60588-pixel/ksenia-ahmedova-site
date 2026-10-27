@@ -2334,59 +2334,68 @@ a {
 }
 
 
-/* Unified restrained champagne-gold button system. Keep layout and form behavior intact. */
+/* Polished jewelry-gold design, replacing flat beige-gold buttons. */
 :root {
-  --button-gold: #B6A071;
-  --button-gold-hover: #C7B487;
-  --button-gold-deep: #8A7448;
-  --button-gold-ink: #211E18;
+  --gold-shadow: #78531C;
+  --gold-edge: #96671D;
+  --gold-highlight: #FFF1BC;
+  --gold-ink: #291B0B;
+  --gold-metal: linear-gradient(110deg, #98691F 0%, #D9A943 18%, #FFE9A0 40%, #FFF2BC 49%, #D8A13C 76%, #966719 100%);
+  --gold-metal-hover: linear-gradient(110deg, #A87823 0%, #E5B64F 18%, #FFF2C2 43%, #FFFADE 53%, #DDA742 79%, #9F711F 100%);
 }
 .btn-solid,
 .btn-light,
 .instrument-form button {
-  background: var(--button-gold);
-  border-color: var(--button-gold-deep);
-  color: var(--button-gold-ink);
+  background: var(--gold-metal);
+  border: 1px solid var(--gold-edge);
+  color: var(--gold-ink);
+  box-shadow: inset 0 1px 1px rgba(255,255,238,.95), inset 0 -2px 3px rgba(100,61,11,.27), 0 3px 9px rgba(98,66,22,.15);
+  text-shadow: 0 1px 0 rgba(255,245,213,.35);
 }
 .btn-solid:hover,
 .btn-light:hover,
 .instrument-form button:hover {
-  background: var(--button-gold-hover);
-  border-color: var(--button-gold-deep);
-  color: var(--button-gold-ink);
+  background: var(--gold-metal-hover);
+  border-color: var(--gold-shadow);
+  color: var(--gold-ink);
 }
 .btn-ghost {
   background: transparent;
-  border-color: var(--button-gold-deep);
-  color: var(--button-gold-deep);
+  border: 1px solid var(--gold-edge);
+  color: #78531C;
+  box-shadow: inset 0 1px 0 rgba(255,245,218,.55);
 }
 .btn-ghost:hover {
-  background: rgba(182, 160, 113, 0.13);
-  border-color: var(--button-gold-deep);
-  color: var(--button-gold-deep);
+  background: linear-gradient(115deg, rgba(223,176,77,.17), rgba(255,239,185,.45), rgba(191,141,45,.18));
+  border-color: var(--gold-shadow);
+  color: #6F4A17;
 }
-.hero .btn-ghost {
-  color: #E7D9B9;
-  border-color: #C7B487;
-}
-.hero .btn-ghost:hover {
-  color: #fff7e6;
-  background: rgba(182, 160, 113, 0.23);
-  border-color: #E7D9B9;
-}
+.hero .btn-ghost { color: #F7E6B5; border-color: #D9B663; }
+.hero .btn-ghost:hover { color: #FFF3CF; border-color: #FFF1BC; }
 .magnet-hero .btn-solid,
-.magnet-hero .btn-solid:hover {
-  color: var(--button-gold-ink);
-}
+.magnet-hero .btn-solid:hover { color: var(--gold-ink); }
 .intent-row label.is-on,
 .magnet-reactions label.is-on {
-  background: var(--button-gold);
-  border-color: var(--button-gold-deep);
-  color: var(--button-gold-ink);
+  background: var(--gold-metal);
+  border-color: var(--gold-edge);
+  color: var(--gold-ink);
 }
-.btn:focus-visible,
-.instrument-form button:focus-visible {
-  outline: 2px solid var(--button-gold-deep);
+.instrument-toggle .instrument-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.65rem;
+  padding: .65rem 1.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--gold-edge);
+  background: var(--gold-metal);
+  color: var(--gold-ink);
+  box-shadow: inset 0 1px 1px rgba(255,255,238,.9), inset 0 -2px 3px rgba(100,61,11,.24), 0 3px 9px rgba(98,66,22,.12);
+  letter-spacing: .12em;
+}
+.instrument-toggle:hover .instrument-hint { background: var(--gold-metal-hover); }
+.btn:focus-visible, .instrument-toggle:focus-visible, .instrument-form button:focus-visible {
+  outline: 2px solid var(--gold-shadow);
   outline-offset: 3px;
 }
 
