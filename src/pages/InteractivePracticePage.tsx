@@ -95,6 +95,10 @@ export default function InteractivePracticePage() {
     setDraft({situation:"",did:"",wanted:"",other:""});
     setNotice("Запись сохранена на этом устройстве.");chime();
   }
+  async function copyFeedback(){
+    const message = ["Отклик о практике «Почему я снова отказываюсь от себя?»",data.feedback.trim()&&"Моё впечатление: "+data.feedback.trim(),data.usefulness&&"Полезность: "+data.usefulness,data.criticism.trim()&&"Что можно улучшить: "+data.criticism.trim(),consent?"Разрешаю использовать отклик обезличенно после отдельного согласования текста.":"Не разрешаю использовать отклик для публикации."].filter(Boolean).join("\n\n");
+    try { await navigator.clipboard.writeText(message); setNotice("Отклик скопирован. Откройте Telegram и вставьте текст в сообщение."); reachGoal("pilot_practice_feedback_copy"); } catch { setNotice("Не удалось скопировать. Вы можете выделить текст в полях и отправить его вручную."); }
+  }
   function exportData(){
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
@@ -171,7 +175,7 @@ export default function InteractivePracticePage() {
         <p className="pr-hint">Ответы сохраняются только в вашем браузере и не отправляются автору автоматически. Если захотите поделиться впечатлением, используйте ссылку на Telegram ниже — без личных записей из практики.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
         <p className="pr-hint">Чтобы отклик дошёл до автора, отправьте его в Telegram. Поля выше сохраняются только в вашем браузере. Не пересылайте личные записи из дневника.</p>
-        <a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Передать своё впечатление →</a>
+        <div className="pr-actions"><button className="pr-ghost" type="button" onClick={copyFeedback} disabled={!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness}>Скопировать мой отклик</button><a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Открыть Telegram и отправить →</a></div>
         <p className="pr-hint">Если захотите обсудить свою ситуацию в психотерапии, напишите для записи на консультацию по той же ссылке.</p>
       </section>}
       {notice&&<p className="pr-notice" role="status">{notice}</p>}
