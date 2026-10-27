@@ -61,6 +61,7 @@ export default function InteractivePracticePage() {
   const [mapStage,setMapStage] = useState(0);
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", fear:"", other:"" });
   const [consent,setConsent] = useState(false);
+  const [feedbackConsent,setFeedbackConsent] = useState(false);
   const [notice,setNotice] = useState("");
   const [feedbackSending,setFeedbackSending] = useState(false);
   const [feedbackSent,setFeedbackSent] = useState(false);
@@ -133,10 +134,10 @@ export default function InteractivePracticePage() {
     setNotice("Запись сохранена на этом устройстве.");chime();
   }
   async function submitFeedback(){
-    if(feedbackSending || feedbackSent || (!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness))return;
+    if(feedbackSending || feedbackSent || !feedbackConsent || (!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness))return;
     setFeedbackSending(true);
     try {
-      const response=await fetch("/api/practice/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({feedback:data.feedback,criticism:data.criticism,usefulness:data.usefulness,consent})});
+      const response=await fetch("/api/practice/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({feedback:data.feedback,criticism:data.criticism,usefulness:data.usefulness,consent,privacyConsent:feedbackConsent})});
       if(!response.ok)throw new Error("send_failed");
       setFeedbackSent(true);
       setNotice("Спасибо! Ваш отклик отправлен и сохранён на сайте.");
@@ -223,7 +224,8 @@ export default function InteractivePracticePage() {
         <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой отклик в обезличенном виде после отдельного согласования текста со мной. Это необязательно.</label>
         <p className="pr-hint">Ваши личные ответы на вопросы и записи дневника остаются только на устройстве. Если нажмёте «Отправить отклик», на сайт будут переданы только три поля обратной связи выше и ваше согласие или отказ на цитирование. Не включайте в отклик сведения, которые не хотите передавать.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
-        <div className="pr-actions"><button className="pr-primary" type="button" onClick={submitFeedback} disabled={feedbackSending||feedbackSent||(!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness)}>{feedbackSent?"Отклик отправлен ✓":feedbackSending?"Отправляем…":"Отправить отклик на сайте →"}</button></div>
+        <label className="pr-check"><input type="checkbox" checked={feedbackConsent} onChange={e=>setFeedbackConsent(e.target.checked)}/> Согласна / согласен добровольно отправить этот отклик на сервер сайта для оценки качества практики. Личные записи дневника и ответы на вопросы не отправляются. Не включайте в отзыв сведения о здоровье, интимной жизни и других людях.</label>
+        <div className="pr-actions"><button className="pr-primary" type="button" onClick={submitFeedback} disabled={feedbackSending||feedbackSent||!feedbackConsent||(!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness)}>{feedbackSent?"Отклик отправлен ✓":feedbackSending?"Отправляем…":"Отправить отклик на сайте →"}</button></div>
         <p className="pr-hint">Для записи на консультацию воспользуйтесь контактами на главной странице сайта.</p>
       </section>}
       {notice&&<p className="pr-notice" role="status">{notice}</p>}
