@@ -181,24 +181,7 @@ export default function Request() {
             </button>
           </form>
         )}
-        <div className="request-assistant" style={{ display: "none" }}>
-          <a
-            className="btn btn-ghost"
-            href={form.assistantHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              try {
-                reachGoal("telegram_assistant_click");
-              } catch {
-                /* переход остаётся обычной ссылкой, если Метрика недоступна */
-              }
-            }}
-          >
-            {form.assistantLabel}
-          </a>
-          <p>{form.assistantHint}</p>
-        </div>
+
         </div>
       </div>
     </section>
