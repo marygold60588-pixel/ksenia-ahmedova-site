@@ -210,7 +210,7 @@ export default function InteractivePracticePage() {
         </div>}
         {completed&&<section className="pr-reflection" aria-label="Подготовка индивидуальной интерпретации"><div className="pr-eyebrow">ИНДИВИДУАЛЬНЫЙ ДИАЛОГ</div><h3>Интерпретация с помощью ИИ</h3><p>В будущей версии ИИ сможет предложить гипотезу по вашей ситуации, а вы сможете согласиться, возразить или уточнить её. Сейчас внешняя обработка ответов отключена: ваши записи никуда не отправляются.</p><p className="pr-hint">Для включения потребуется отдельное добровольное согласие с указанием провайдера, страны обработки, целей и срока хранения. До юридической и технической проверки этот модуль недоступен.</p><label className="pr-check"><input type="checkbox" checked={aiAdult} onChange={e=>setAiAdult(e.target.checked)}/> Мне исполнилось 18 лет.</label><label className="pr-check"><input type="checkbox" checked={aiConsent} onChange={e=>setAiConsent(e.target.checked)}/> Я понимаю, что для ИИ-анализа потребуется передача выбранных ответов внешнему провайдеру. Это предварительное ознакомление, не разрешение на передачу данных.</label><button className="pr-ghost" type="button" disabled>ИИ-интерпретация пока недоступна</button></section>}
         {completed&&<section className="pr-reflection"><h3>{localInterpretation.title}</h3><p>{localInterpretation.hypothesis}</p><p><strong>Вопрос для размышления:</strong> {localInterpretation.question}</p><p className="pr-hint"><strong>Другое возможное объяснение:</strong> {localInterpretation.alternative}</p><p className="pr-hint">Это локально выбранная гипотеза по ключевым словам, а не индивидуальный анализ нейросети.</p><label className="pr-label" htmlFor="pr-hypothesis-reaction">Ваша реакция</label><textarea id="pr-hypothesis-reaction" rows={3} value={data.hypothesisReaction||""} onChange={e=>setData(d=>({...d,hypothesisReaction:e.target.value}))} placeholder="Подходит, отчасти или совсем нет? Почему?"/></section>}
-        {completed&&<section className="pr-reflection" aria-label="Углублённое исследование">
+        {completed&&<details className="pr-reflection" aria-label="Углублённое исследование"><summary>Хочу исследовать глубже: пять необязательных вопросов</summary>
           <div className="pr-eyebrow">ГЛУБЖЕ В СВОЙ СЦЕНАРИЙ</div>
           <h3>Что защищает ваш привычный способ поступать?</h3>
           <p className="pr-hint">Здесь важно не только увидеть, чего вы лишаетесь, но и понять, от чего привычная реакция вас оберегает. Это исследование, а не диагноз.</p>
@@ -239,7 +239,7 @@ export default function InteractivePracticePage() {
             {data.depth?.next&&<p><strong>Мой бережный шаг:</strong> {data.depth.next}</p>}
             <p className="pr-hint">Это ваши слова, а не заключение о личности. Проверьте, насколько такая связь соответствует вашему опыту.</p>
           </div>
-        </section>}
+        </details>}
         {completed&&<div className="pr-next-week">
           <div className="pr-eyebrow">СЛЕДУЮЩИЕ СЕМЬ ДНЕЙ</div>
           <h3>Пусть это открытие не останется только мыслью</h3>
