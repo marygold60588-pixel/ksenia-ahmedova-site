@@ -62,6 +62,10 @@ export default function Request() {
         </div>
 
         <div className="request-panel">
+        <div className="request-assistant request-assistant--first">
+          <a className="btn btn-solid" href={form.assistantHref} target="_blank" rel="noopener noreferrer" onClick={() => reachGoal("telegram_assistant_click")}>{form.assistantLabel}</a>
+          <p>{form.assistantHint}</p>
+        </div>
         {done ? (
           <p className="request-success">{form.success}</p>
         ) : (
@@ -177,7 +181,7 @@ export default function Request() {
             </button>
           </form>
         )}
-        <div className="request-assistant">
+        <div className="request-assistant" style={{ display: "none" }}>
           <a
             className="btn btn-ghost"
             href={form.assistantHref}
