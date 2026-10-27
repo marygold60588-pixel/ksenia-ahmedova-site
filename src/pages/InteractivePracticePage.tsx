@@ -74,18 +74,52 @@ export default function InteractivePracticePage() {
   function chime() {
     if (!sound) return;
     try {
+      // Airy crystal chimes: four quiet notes with long, soft decay.
+      // Synthesized locally, without downloading audio or contacting any service.
       const AudioCtx = window.AudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      [880,1320,1760].forEach((freq,i)=>{
-        const osc=ctx.createOscillator(), gain=ctx.createGain(),t=ctx.currentTime+i*.07;
-        osc.type="sine"; osc.frequency.setValueAtTime(freq,t);
-        gain.gain.setValueAtTime(.0001,t); gain.gain.exponentialRampToValueAtTime(.018,t+.015);
-        gain.gain.exponentialRampToValueAtTime(.0001,t+.42);
-        osc.connect(gain).connect(ctx.destination);osc.start(t);osc.stop(t+.45);
+      const master = ctx.createGain();
+      master.gain.value = 0.22;
+      master.connect(ctx.destination);
+      const delays = [0.13, 0.29, 0.48, 0.75];
+      const echoes = [0.19, 0.13, 0.09, 0.06];
+      const bus = ctx.createGain();
+      bus.connect(master);
+      delays.forEach((seconds, i) => {
+        const delay = ctx.createDelay(1);
+        const level = ctx.createGain();
+        delay.delayTime.value = seconds;
+        level.gain.value = echoes[i];
+        bus.connect(delay);
+        delay.connect(level);
+        level.connect(master);
       });
-      window.setTimeout(()=>{void ctx.close()},900);
-    } catch { /* audio unavailable */ }
+      const notes = [
+        { at: 0.10, freq: 880, level: 0.14 },
+        { at: 0.49, freq: 1174.66, level: 0.11 },
+        { at: 0.96, freq: 1318.51, level: 0.105 },
+        { at: 1.58, freq: 1760, level: 0.075 },
+      ];
+      notes.forEach(({ at, freq, level }) => {
+        const when = ctx.currentTime + at;
+        [1, 2.003, 3.96].forEach((harmonic, index) => {
+          const oscillator = ctx.createOscillator();
+          const envelope = ctx.createGain();
+          oscillator.type = "sine";
+          oscillator.frequency.value = freq * harmonic;
+          const volume = level * [1, 0.22, 0.10][index];
+          envelope.gain.setValueAtTime(0.00001, when);
+          envelope.gain.exponentialRampToValueAtTime(Math.max(0.00002, volume), when + 0.025);
+          envelope.gain.exponentialRampToValueAtTime(0.00001, when + 3.5);
+          oscillator.connect(envelope);
+          envelope.connect(bus);
+          oscillator.start(when);
+          oscillator.stop(when + 3.55);
+        });
+      });
+      window.setTimeout(() => { void ctx.close().catch(() => {}); }, 5500);
+    } catch { /* Keep the practice fully usable without sound. */ }
   }
   function updateInquiry(key:keyof Inquiry,value:string){setData(d=>({...d,inquiry:{...d.inquiry,[key]:value}}));}
   function saveEntry(){
