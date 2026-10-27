@@ -126,7 +126,7 @@ export default function InteractivePracticePage() {
     if(!draft.situation.trim()||!draft.wanted.trim())return;
     const entry:Entry={...draft,id:crypto.randomUUID(),at:new Date().toISOString()};
     setData(d=>({...d,entries:[...d.entries,entry]}));
-    setDraft({situation:"",did:"",wanted:"",other:""});
+    setDraft({situation:"",did:"",wanted:"",fear:"",other:""});
     setNotice("Запись сохранена на этом устройстве.");chime();
   }
   async function copyFeedback(){
