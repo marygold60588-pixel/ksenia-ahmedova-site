@@ -4,7 +4,7 @@ import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
 type Entry = { id: string; at: string; situation: string; did: string; wanted: string; fear?: string; other: string };
-type Saved = { depth?: {protection?:string;relief?:string;feeling?:string;cost?:string;next?:string}; inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
+type Saved = { hypothesisReaction?:string; depth?: {protection?:string;relief?:string;feeling?:string;cost?:string;next?:string}; inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
 const KEY = "akhmedova.practice.self-refusal.v1";
 const blank: Inquiry = { scene: "", action: "", wish: "", fear: "", response: "", repeated: "" };
 const steps = [
@@ -204,6 +204,7 @@ export default function InteractivePracticePage() {
           <textarea id="pr-my-insight" rows={4} maxLength={2500} placeholder="Сейчас я замечаю, что…" value={data.insight||""} onChange={e=>setData(d=>({...d,insight:e.target.value}))}/>
           <p className="pr-hint">Здесь может быть и сомнение, и несогласие с разбором. Важно то, что вы сами думаете об этой ситуации.</p>
         </div>}
+        {completed&&<section className="pr-reflection"><h3>Проверьте возможное противоречие</h3><p>Возможно, отказ от желания одновременно помогал избежать неприятной реакции и оставлял вас с неудовлетворённостью. Это только гипотеза. Насколько она подходит?</p><label className="pr-label" htmlFor="pr-hypothesis-reaction">Ваша реакция</label><textarea id="pr-hypothesis-reaction" rows={3} value={data.hypothesisReaction||""} onChange={e=>setData(d=>({...d,hypothesisReaction:e.target.value}))} placeholder="Подходит, отчасти или совсем нет? Почему?"/></section>}
         {completed&&<section className="pr-reflection" aria-label="Углублённое исследование">
           <div className="pr-eyebrow">ГЛУБЖЕ В СВОЙ СЦЕНАРИЙ</div>
           <h3>Что защищает ваш привычный способ поступать?</h3>
