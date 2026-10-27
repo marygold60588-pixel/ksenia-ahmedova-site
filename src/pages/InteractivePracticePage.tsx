@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { reachGoal } from "@/lib/metrika";
 import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
@@ -49,6 +50,11 @@ export default function InteractivePracticePage() {
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [notice,setNotice] = useState("");
+  const started = useRef(false);
+  const finished = useRef(false);
+  useEffect(()=>{ reachGoal("pilot_practice_open"); },[]);
+  function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");}}
+  function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");}}
   useEffect(()=>{ try { localStorage.setItem(KEY,JSON.stringify(data)); } catch { setNotice("Не удалось сохранить запись на этом устройстве."); } },[data]);
   const completed = steps.every(s=>data.inquiry[s.key].trim());
   const filled = steps.filter(s=>data.inquiry[s.key].trim()).length;
@@ -98,8 +104,8 @@ export default function InteractivePracticePage() {
         <div className="pr-progress" role="progressbar" aria-valuenow={filled} aria-valuemin={0} aria-valuemax={steps.length} aria-label="Заполненные вопросы"><span style={{width:`${filled/steps.length*100}%`}}/></div>
         <h2 id="pr-question">{steps[step].title}</h2><p className="pr-question">{steps[step].question}</p><p className="pr-hint">{steps[step].hint}</p>
         <label className="pr-label" htmlFor="pr-answer">Ваши слова</label>
-        <textarea id="pr-answer" rows={5} maxLength={3000} value={data.inquiry[steps[step].key]} onChange={e=>updateInquiry(steps[step].key,e.target.value)} placeholder="Можно начать с нескольких слов…"/>
-        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else setTab("map");}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
+        <textarea id="pr-answer" rows={5} maxLength={3000} value={data.inquiry[steps[step].key]} onChange={e=>{recordStart();updateInquiry(steps[step].key,e.target.value);}} placeholder="Можно начать с нескольких слов…"/>
+        <div className="pr-actions"><button className="pr-ghost" disabled={step===0} onClick={()=>setStep(v=>Math.max(0,v-1))}>← Назад</button><button className="pr-primary" disabled={!data.inquiry[steps[step].key].trim()} onClick={()=>{chime();if(step<steps.length-1)setStep(v=>v+1);else {recordFinish();setTab("map");}}}>{step===steps.length-1?"Открыть наблюдение ✧":"Продолжить →"}</button></div>
       </section>}
       {tab==="journal"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ЛИЧНЫЙ ДНЕВНИК</span><span>{data.entries.length} записей</span></div>
@@ -122,7 +128,7 @@ export default function InteractivePracticePage() {
         {data.inquiry.wish.trim()&&<div className="pr-contrast"><div><small>ЧЕГО МНЕ ХОТЕЛОСЬ</small><p>{data.inquiry.wish}</p></div><div><small>ЧТО Я СДЕЛАЛА / СДЕЛАЛ</small><p>{data.inquiry.action||"Пока нет ответа"}</p></div></div>}
         {data.entries.length>0&&<div className="pr-insight"><span>ИЗ ДНЕВНИКА · {data.entries.length} НАБЛЮДЕНИЙ</span><p>В последней записи вы хотели: «{data.entries[data.entries.length-1].wanted}». Что общего с вашей первой ситуацией — а что отличается? Необязательно находить единый паттерн.</p></div>}
         <p className="pr-hint">В этой пилотной версии уточнения основаны на ограниченных правилах, а не на ИИ-анализе. Не приписывайте карте знания, которых в ней нет.</p>
-        <div className="pr-actions"><button className="pr-ghost" onClick={()=>setTab("journal")}>Перейти в дневник</button><button className="pr-primary" onClick={()=>{chime();setTab("feedback");}}>Завершить и поделиться впечатлением →</button></div>
+        <div className="pr-actions"><button className="pr-ghost" onClick={()=>setTab("journal")}>Перейти в дневник</button><button className="pr-primary" onClick={()=>{recordFinish();chime();setTab("feedback");}}>Завершить и поделиться впечатлением →</button></div>
       </section>}
       {tab==="feedback"&&<section className="pr-panel">
         <div className="pr-sectionhead"><span>ВАШ ОПЫТ</span><span>НЕЗАВИСИМАЯ ОБРАТНАЯ СВЯЗЬ</span></div><h2>Что осталось с вами?</h2>
@@ -133,6 +139,9 @@ export default function InteractivePracticePage() {
         <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой ответ как анонимный отзыв после отдельного согласования текста.</label>
         <p className="pr-hint">Пока это локальный прототип: ответы не отправляются автору и не публикуются. Вы можете экспортировать их для добровольной передачи.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
+        <p className="pr-hint">Хотите помочь улучшить пилот? Напишите автору в Telegram, что было полезным, а что нет. Не пересылайте личные записи из дневника без необходимости.</p>
+        <a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Оставить отзыв в Telegram →</a>
+        <p className="pr-hint">Если захотите обсудить свою ситуацию в психотерапии, напишите для записи на консультацию по той же ссылке.</p>
       </section>}
       {notice&&<p className="pr-notice" role="status">{notice}</p>}
       <footer className="pr-footer"><p>Материал предназначен для самостоятельного исследования, не является диагностикой или психотерапией. Не продолжайте, если вопросы усиливают тяжёлое состояние; при необходимости обратитесь за профессиональной поддержкой.</p><p>Личные ответы хранятся в браузере этого устройства, не передаются на сервер и могут быть доступны другим пользователям этого браузера. Не используйте общее устройство для конфиденциальных записей.</p><div className="pr-actions"><button className="pr-ghost" onClick={exportData}>Экспортировать записи</button><button className="pr-delete" onClick={()=>{if(window.confirm("Удалить все записи этой практики на данном устройстве?")){localStorage.removeItem(KEY);setData(initial);setStep(0);setTab("inquiry");setNotice("Локальные записи удалены.");}}}>Удалить мои записи</button></div></footer>
