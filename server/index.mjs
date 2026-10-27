@@ -1045,6 +1045,7 @@ async function handlePractice(req, res, urlPath) {
     } catch { return sendJson(req,res,500,{ok:false}); }
   }
   if (urlPath === "/api/practice/feedback") {
+    if (data.privacyConsent !== true) return sendJson(req,res,400,{ok:false});
     const feedback = typeof data.feedback === "string" ? sanitize(data.feedback,2500) : "";
     const criticism = typeof data.criticism === "string" ? sanitize(data.criticism,2500) : "";
     const usefulness = ["new","organized","little","none",""].includes(data.usefulness) ? data.usefulness : "";
