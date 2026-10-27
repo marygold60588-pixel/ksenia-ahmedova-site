@@ -120,8 +120,7 @@ export const site: SiteContent = {
     ],
     intents: [
       { value: "diagnosis", label: "Первичная диагностическая консультация" },
-      { value: "consultation", label: "Первичная консультация" },
-      { value: "gift", label: "Гайд" },
+      { value: "gift", label: "Задать вопрос" },
     ],
   },
   footer: {
