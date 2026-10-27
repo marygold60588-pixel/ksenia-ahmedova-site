@@ -62,11 +62,14 @@ export default function InteractivePracticePage() {
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", fear:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [notice,setNotice] = useState("");
+  const [feedbackSending,setFeedbackSending] = useState(false);
+  const [feedbackSent,setFeedbackSent] = useState(false);
+  const [counts,setCounts] = useState<{open:number;start:number;complete:number;feedback:number}|null>(null);
   const started = useRef(false);
   const finished = useRef(false);
-  useEffect(()=>{ reachGoal("pilot_practice_open"); },[]);
-  function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");}}
-  function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");}}
+  useEffect(()=>{ reachGoal("pilot_practice_open"); void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"open"})}).catch(()=>{}); void fetch("/api/practice/stats").then(r=>r.ok?r.json():null).then(j=>{if(j?.ok)setCounts(j.counts);}).catch(()=>{}); },[]);
+  function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"start"})}).catch(()=>{});}}
+  function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"complete"})}).catch(()=>{});}}
   useEffect(()=>{ try { localStorage.setItem(KEY,JSON.stringify(data)); } catch { setNotice("Не удалось сохранить запись на этом устройстве."); } },[data]);
   const completed = steps.every(s=>data.inquiry[s.key].trim());
   const filled = steps.filter(s=>data.inquiry[s.key].trim()).length;
@@ -129,9 +132,18 @@ export default function InteractivePracticePage() {
     setDraft({situation:"",did:"",wanted:"",fear:"",other:""});
     setNotice("Запись сохранена на этом устройстве.");chime();
   }
-  async function copyFeedback(){
-    const message = ["Отклик о практике «Почему я снова отказываюсь от себя?»",data.feedback.trim()&&"Моё впечатление: "+data.feedback.trim(),data.usefulness&&"Полезность: "+data.usefulness,data.criticism.trim()&&"Что можно улучшить: "+data.criticism.trim(),consent?"Разрешаю использовать отклик обезличенно после отдельного согласования текста.":"Не разрешаю использовать отклик для публикации."].filter(Boolean).join("\n\n");
-    try { await navigator.clipboard.writeText(message); setNotice("Отклик скопирован. Откройте Telegram и вставьте текст в сообщение."); reachGoal("pilot_practice_feedback_copy"); } catch { setNotice("Не удалось скопировать. Вы можете выделить текст в полях и отправить его вручную."); }
+  async function submitFeedback(){
+    if(feedbackSending || feedbackSent || (!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness))return;
+    setFeedbackSending(true);
+    try {
+      const response=await fetch("/api/practice/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({feedback:data.feedback,criticism:data.criticism,usefulness:data.usefulness,consent})});
+      if(!response.ok)throw new Error("send_failed");
+      setFeedbackSent(true);
+      setNotice("Спасибо! Ваш отклик отправлен и сохранён на сайте.");
+      setCounts(c=>c?{...c,feedback:c.feedback+1}:c);
+      reachGoal("pilot_practice_feedback_submit");
+    } catch {setNotice("Не удалось отправить отклик. Попробуйте ещё раз чуть позже — текст сохранён в этом браузере.");}
+    finally {setFeedbackSending(false);}
   }
   function exportData(){
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
@@ -146,7 +158,8 @@ export default function InteractivePracticePage() {
       <h1>Почему я снова <em>отказываюсь от себя?</em></h1>
       <p className="pr-intro">От страха чужого «нет» — к вниманию к собственному желанию. Здесь нет правильных ответов и необходимости что-то менять прямо сейчас.</p>
       <div className="pr-ornament" aria-hidden="true">✧ ───────── ✧</div>
-      <p className="pr-hint">Шесть шагов. Ваши ответы постепенно соединятся в личную карту наблюдений. Звук необязателен — его можно включить в правом верхнем углу.</p>
+      <p className="pr-hint">Шесть шагов. Ваши ответы постепенно соединятся в личную карту наблюдений. Участие бесплатно — 0 ₽. Звук необязателен.</p>
+      {counts&&<p className="pr-hint" aria-label="Счётчик прохождений">Открыли практику: {counts.open} · Начали: {counts.start} · Завершили: {counts.complete} · Оставили отклик: {counts.feedback}</p>}
       <nav className="pr-tabs" aria-label="Разделы практики">
         {([{id:"inquiry",name:"Исследование"},{id:"journal",name:"Дневник"},{id:"map",name:"Моя карта"},{id:"feedback",name:"Обратная связь"}] as const).map(t=><button type="button" key={t.id} className={tab===t.id?"active":""} onClick={()=>{setTab(t.id);setNotice("");}} aria-current={tab===t.id?"page":undefined}>{t.name}</button>)}
       </nav>
@@ -208,11 +221,10 @@ export default function InteractivePracticePage() {
         <label className="pr-label" htmlFor="pr-usefulness">Насколько полезной оказалась практика?</label><select id="pr-usefulness" value={data.usefulness} onChange={e=>setData(d=>({...d,usefulness:e.target.value}))}><option value="">Выберите ответ</option><option value="new">Заметила(а) что-то новое</option><option value="organized">Помогла упорядочить известное</option><option value="little">Интересно, но мало пользы</option><option value="none">Не получила(а) пользы</option></select>
         <label className="pr-label" htmlFor="pr-criticism">Что было лишним, раздражающим или непонятным?</label><textarea id="pr-criticism" rows={3} maxLength={2500} value={data.criticism} onChange={e=>setData(d=>({...d,criticism:e.target.value}))}/>
         <label className="pr-check"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> Разрешаю использовать мой отклик в обезличенном виде после отдельного согласования текста со мной. Это необязательно.</label>
-        <p className="pr-hint">Ответы сохраняются только в вашем браузере и не отправляются автору автоматически. Если захотите поделиться впечатлением, используйте ссылку на Telegram ниже — без личных записей из практики.</p>
+        <p className="pr-hint">Ваши личные ответы на вопросы и записи дневника остаются только на устройстве. Если нажмёте «Отправить отклик», на сайт будут переданы только три поля обратной связи выше и ваше согласие или отказ на цитирование. Не включайте в отклик сведения, которые не хотите передавать.</p>
         <div className="pr-actions"><button className="pr-primary" onClick={exportData}>Скачать свои ответы</button></div>
-        <p className="pr-hint">Чтобы отклик дошёл до автора, отправьте его в Telegram. Поля выше сохраняются только в вашем браузере. Не пересылайте личные записи из дневника.</p>
-        <div className="pr-actions"><button className="pr-ghost" type="button" onClick={copyFeedback} disabled={!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness}>Скопировать мой отклик</button><a className="pr-primary" href="https://t.me/chudesa_v_tebe" target="_blank" rel="noopener noreferrer" onClick={()=>reachGoal("pilot_practice_feedback_click")}>Открыть Telegram и отправить →</a></div>
-        <p className="pr-hint">Если захотите обсудить свою ситуацию в психотерапии, напишите для записи на консультацию по той же ссылке.</p>
+        <div className="pr-actions"><button className="pr-primary" type="button" onClick={submitFeedback} disabled={feedbackSending||feedbackSent||(!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness)}>{feedbackSent?"Отклик отправлен ✓":feedbackSending?"Отправляем…":"Отправить отклик на сайте →"}</button></div>
+        <p className="pr-hint">Для записи на консультацию воспользуйтесь контактами на главной странице сайта.</p>
       </section>}
       {notice&&<p className="pr-notice" role="status">{notice}</p>}
       <footer className="pr-footer"><p>Материал предназначен для самостоятельного исследования, не является диагностикой или психотерапией. Не продолжайте, если вопросы усиливают тяжёлое состояние; при необходимости обратитесь за профессиональной поддержкой.</p><p>Личные ответы хранятся в браузере этого устройства, не передаются на сервер и могут быть доступны другим пользователям этого браузера. Не используйте общее устройство для конфиденциальных записей.</p><div className="pr-actions"><button className="pr-ghost" onClick={exportData}>Экспортировать записи</button><button className="pr-delete" onClick={()=>{if(window.confirm("Удалить все записи этой практики на данном устройстве?")){localStorage.removeItem(KEY);setData(initial);setStep(0);setTab("inquiry");setNotice("Локальные записи удалены.");}}}>Удалить мои записи</button></div></footer>
