@@ -19,11 +19,19 @@ function scrollToHash() {
 
 export default function HomePage() {
   useEffect(() => {
-    scrollToHash();
-    const timer = window.setTimeout(scrollToHash, 350);
+    // Opening or refreshing the homepage should always begin at the hero.
+    // Clear a stale section hash from previous navigation without reloading.
+    if (window.location.hash) {
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    }
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
     window.addEventListener("hashchange", scrollToHash);
     return () => {
-      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frame);
+      window.history.scrollRestoration = previousRestoration;
       window.removeEventListener("hashchange", scrollToHash);
     };
   }, []);
