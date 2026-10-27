@@ -2333,6 +2333,63 @@ a {
   }
 }
 
+
+/* Unified restrained champagne-gold button system. Keep layout and form behavior intact. */
+:root {
+  --button-gold: #B6A071;
+  --button-gold-hover: #C7B487;
+  --button-gold-deep: #8A7448;
+  --button-gold-ink: #211E18;
+}
+.btn-solid,
+.btn-light,
+.instrument-form button {
+  background: var(--button-gold);
+  border-color: var(--button-gold-deep);
+  color: var(--button-gold-ink);
+}
+.btn-solid:hover,
+.btn-light:hover,
+.instrument-form button:hover {
+  background: var(--button-gold-hover);
+  border-color: var(--button-gold-deep);
+  color: var(--button-gold-ink);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: var(--button-gold-deep);
+  color: var(--button-gold-deep);
+}
+.btn-ghost:hover {
+  background: rgba(182, 160, 113, 0.13);
+  border-color: var(--button-gold-deep);
+  color: var(--button-gold-deep);
+}
+.hero .btn-ghost {
+  color: #E7D9B9;
+  border-color: #C7B487;
+}
+.hero .btn-ghost:hover {
+  color: #fff7e6;
+  background: rgba(182, 160, 113, 0.23);
+  border-color: #E7D9B9;
+}
+.magnet-hero .btn-solid,
+.magnet-hero .btn-solid:hover {
+  color: var(--button-gold-ink);
+}
+.intent-row label.is-on,
+.magnet-reactions label.is-on {
+  background: var(--button-gold);
+  border-color: var(--button-gold-deep);
+  color: var(--button-gold-ink);
+}
+.btn:focus-visible,
+.instrument-form button:focus-visible {
+  outline: 2px solid var(--button-gold-deep);
+  outline-offset: 3px;
+}
+
 @media print {
   .site-noise,
   .article-top,
