@@ -1,4 +1,5 @@
 import http from "node:http";
+import { handleAIRequest } from "./practice-ai-service.mjs";
 import https from "node:https";
 import net from "node:net";
 import tls from "node:tls";
@@ -1036,6 +1037,10 @@ async function handlePractice(req, res, urlPath) {
   let data;
   try { data=JSON.parse(await readBody(req)); } catch { return sendJson(req,res,400,{ok:false}); }
   if (!data || typeof data !== "object" || Array.isArray(data)) return sendJson(req,res,400,{ok:false});
+  if (urlPath === "/api/practice/interpret") {
+    const result = await handleAIRequest(data);
+    return sendJson(req, res, result.status, result.body);
+  }
   if (urlPath === "/api/practice/event") {
     if (!PRACTICE_EVENTS.has(data.event)) return sendJson(req,res,400,{ok:false});
     try {
