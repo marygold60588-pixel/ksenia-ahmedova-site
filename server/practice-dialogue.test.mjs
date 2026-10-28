@@ -1,0 +1,12 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { practiceDialogue } from "./practice-dialogue.mjs";
+const q={scene:"Партнёр ушёл",action:"Я промолчала",wish:"Хотела остаться вместе",fear:"Боялась отказа"};
+test("requires core answers",()=>assert.equal(practiceDialogue({}).ok,false));
+test("initial hypothesis",()=>assert.equal(practiceDialogue(q).phase,"hypothesis"));
+test("takes actual conversations into account",()=>assert.match(practiceDialogue({...q,response:"Я уже просила"}).hypothesis,/уже пытались/));
+test("safety over interpretation",()=>assert.equal(practiceDialogue({...q,scene:"Он угрожал мне"}).phase,"safety"));
+test("disagreement revises",()=>assert.match(practiceDialogue(q,"disagree").hypothesis,/отложить/));
+test("partial agreement revises",()=>assert.match(practiceDialogue(q,"partly").hypothesis,/часть/));
+test("rejects invalid reaction",()=>assert.equal(practiceDialogue(q,"unknown").ok,false));
+test("seven day map",()=>assert.ok(practiceDialogue(q,"resonates").map.sevenDays));
