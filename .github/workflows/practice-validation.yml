@@ -1,0 +1,31 @@
+name: Practice validation
+on:
+  push:
+    branches:
+      - feature/ai-interpretation-consent
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'vite.config.*'
+      - '.github/workflows/practice-validation.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Offline AI and dialogue tests
+        run: node --test server/practice-ai.test.mjs server/practice-dialogue.test.mjs
+      - name: Production build (no deployment)
+        run: npm run build
