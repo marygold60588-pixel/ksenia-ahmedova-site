@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { reachGoal } from "@/lib/metrika";
+import { interpretLocally } from "@/lib/practiceInterpretation";
+import { adaptiveReflection, type PracticeReaction } from "@/lib/practiceAdaptive";
 import "./InteractivePracticePage.css";
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
 type Entry = { id: string; at: string; situation: string; did: string; wanted: string; fear?: string; other: string };
-type Saved = { depth?: {protection?:string;relief?:string;feeling?:string;cost?:string;next?:string}; inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
+type Saved = { hypothesisReaction?:string; adaptiveReaction?:PracticeReaction; depth?: {protection?:string;relief?:string;feeling?:string;cost?:string;next?:string}; inquiry: Inquiry; entries: Entry[]; feedback: string; criticism: string; usefulness: string; insight?: string };
 const KEY = "akhmedova.practice.self-refusal.v1";
 const blank: Inquiry = { scene: "", action: "", wish: "", fear: "", response: "", repeated: "" };
 const steps = [
@@ -62,7 +64,10 @@ export default function InteractivePracticePage() {
   const [draft,setDraft] = useState({ situation:"", did:"", wanted:"", fear:"", other:"" });
   const [consent,setConsent] = useState(false);
   const [feedbackConsent,setFeedbackConsent] = useState(false);
+  const [aiConsent,setAiConsent] = useState(false);
+  const [aiAdult,setAiAdult] = useState(false);
   const [notice,setNotice] = useState("");
+  const [personalReviewOpen,setPersonalReviewOpen] = useState(false);
   const [feedbackSending,setFeedbackSending] = useState(false);
   const [feedbackSent,setFeedbackSent] = useState(false);
   const [counts,setCounts] = useState<{open:number;start:number;complete:number;feedback:number}|null>(null);
@@ -75,6 +80,8 @@ export default function InteractivePracticePage() {
   const completed = steps.every(s=>data.inquiry[s.key].trim());
   const filled = steps.filter(s=>data.inquiry[s.key].trim()).length;
   const observation = useMemo(()=>gentleObservation(data.inquiry),[data.inquiry]);
+  const localInterpretation = useMemo(()=>interpretLocally(data.inquiry),[data.inquiry]);
+  const adaptive = useMemo(()=>adaptiveReflection(data.inquiry,data.adaptiveReaction),[data.inquiry,data.adaptiveReaction]);
   function chime() {
     if (!sound) return;
     try {
@@ -151,6 +158,14 @@ export default function InteractivePracticePage() {
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download="moi-nablyudeniya.json";a.click();URL.revokeObjectURL(url);
   }
+  function exportReviewRequest() {
+    const q=data.inquiry;
+    const lines=["ЗАПРОС НА ЛИЧНЫЙ ПИСЬМЕННЫЙ РАЗБОР","Подготовлен на моём устройстве. Не отправлен на сайт.","",...steps.map((s,i)=>`${i+1}. ${s.title} — ${s.question}\n${q[s.key] || "Не заполнено"}`),"",`Реакция на гипотезу: ${data.adaptiveReaction==="resonates"?"Откликается":data.adaptiveReaction==="partly"?"Отчасти":data.adaptiveReaction==="disagree"?"Не похоже":"Не указана"}`,"", "Дополнительные ответы:", ...Object.entries(data.depth||{}).map(([k,v])=>`${k}: ${v}`)];
+    const blob=new Blob([lines.join("\n\n")],{type:"text/plain;charset=utf-8"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download="zapros-na-lichnyi-razbor.txt";a.click();URL.revokeObjectURL(url);
+    setNotice("Файл с запросом сохранён на вашем устройстве. На сайт ничего не отправлено.");
+  }
   return <div className="pr-root">
     <div className="pr-halo" aria-hidden="true"/>
     <header className="pr-top"><a href="/" className="pr-brand">Ксения Ахмедова <span>· психологические практики</span></a><button type="button" className="pr-sound" onClick={()=>setSound(v=>!v)} aria-pressed={sound}>{sound?"♫ Звук включён":"♩ Включить звук"}</button></header>
@@ -204,7 +219,11 @@ export default function InteractivePracticePage() {
           <textarea id="pr-my-insight" rows={4} maxLength={2500} placeholder="Сейчас я замечаю, что…" value={data.insight||""} onChange={e=>setData(d=>({...d,insight:e.target.value}))}/>
           <p className="pr-hint">Здесь может быть и сомнение, и несогласие с разбором. Важно то, что вы сами думаете об этой ситуации.</p>
         </div>}
-        {completed&&<section className="pr-reflection" aria-label="Углублённое исследование">
+        {completed&&<section className="pr-reflection" aria-label="Подготовка индивидуальной интерпретации"><div className="pr-eyebrow">ИНДИВИДУАЛЬНЫЙ ДИАЛОГ</div><h3>Интерпретация с помощью ИИ</h3><p>В будущей версии ИИ сможет предложить гипотезу по вашей ситуации, а вы сможете согласиться, возразить или уточнить её. Сейчас внешняя обработка ответов отключена: ваши записи никуда не отправляются.</p><p className="pr-hint">Для включения потребуется отдельное добровольное согласие с указанием провайдера, страны обработки, целей и срока хранения. До юридической и технической проверки этот модуль недоступен.</p><label className="pr-check"><input type="checkbox" checked={aiAdult} onChange={e=>setAiAdult(e.target.checked)}/> Мне исполнилось 18 лет.</label><label className="pr-check"><input type="checkbox" checked={aiConsent} onChange={e=>setAiConsent(e.target.checked)}/> Я понимаю, что для ИИ-анализа потребуется передача выбранных ответов внешнему провайдеру. Это предварительное ознакомление, не разрешение на передачу данных.</label><button className="pr-ghost" type="button" disabled>ИИ-интерпретация пока недоступна</button></section>}
+        {completed&&<section className="pr-reflection" aria-label="Личный письменный разбор от Ксении Ахмедовой"><div className="pr-eyebrow">ПРОДОЛЖЕНИЕ ПРАКТИКИ · ПО ЖЕЛАНИЮ</div><h3>Получить личный письменный разбор от Ксении Ахмедовой</h3><p>Вы можете заказать индивидуальный взгляд специалиста на вашу ситуацию и ответы. Бесплатная практика при этом остаётся доступной всем.</p><p className="pr-hint">Приём и оплата заказов пока не открыты. Мы готовим защищённую передачу ответов и закрытый кабинет. Ваши записи сейчас остаются в браузере.</p><button className="pr-primary" type="button" onClick={()=>setPersonalReviewOpen(v=>!v)} aria-expanded={personalReviewOpen}>{personalReviewOpen?"Свернуть информацию":"Узнать о личном разборе"}</button>{personalReviewOpen&&<div className="pr-insight"><span>КАК ЭТО БУДЕТ РАБОТАТЬ</span><p>1. Вы отдельно разрешите передачу выбранных ответов. 2. После оформления запроса Ксения прочитает историю и подготовит письменный разбор. 3. Результат появится в защищённом личном доступе.</p><p>Пока можно сохранить свой запрос в текстовый файл. Не отправляйте его через обычную форму обратной связи: она не предназначена для конфиденциальных историй.</p><button className="pr-ghost" type="button" onClick={exportReviewRequest}>Сохранить ответы для личного разбора (.txt)</button></div>}</section>}
+        {completed&&<section className="pr-reflection" aria-label="Диалог с вашей историей"><div className="pr-eyebrow">ДИАЛОГ С ВАШЕЙ ИСТОРИЕЙ · БЕЗ ПЕРЕДАЧИ ДАННЫХ</div><h3>Что могло происходить внутри?</h3><p>{adaptive.hypothesis}</p><p><strong>Другой возможный взгляд:</strong> {adaptive.alternative}</p><p>{adaptive.question}</p>{adaptive.phase!=="safety"&&<div className="pr-actions">{(["resonates","partly","disagree"] as const).map((reaction)=><button key={reaction} type="button" className={data.adaptiveReaction===reaction?"pr-primary":"pr-ghost"} onClick={()=>setData(d=>({...d,adaptiveReaction:reaction}))}>{reaction==="resonates"?"Откликается":reaction==="partly"?"Отчасти":"Не похоже"}</button>)}</div>}{data.adaptiveReaction&&adaptive.phase==="reflection"&&<p className="pr-hint">Ваша реакция учтена. Вы можете изменить её: это исследование, а не тест с правильным ответом.</p>}<p className="pr-hint">Ответ сформирован на вашем устройстве по ограниченным правилам. Это не ИИ, диагноз или заключение о причинах ваших поступков.</p></section>}
+        {completed&&<section className="pr-reflection"><h3>{localInterpretation.title}</h3><p>{localInterpretation.hypothesis}</p><p><strong>Вопрос для размышления:</strong> {localInterpretation.question}</p><p className="pr-hint"><strong>Другое возможное объяснение:</strong> {localInterpretation.alternative}</p><p className="pr-hint">Это локально выбранная гипотеза по ключевым словам, а не индивидуальный анализ нейросети.</p><label className="pr-label" htmlFor="pr-hypothesis-reaction">Ваша реакция</label><textarea id="pr-hypothesis-reaction" rows={3} value={data.hypothesisReaction||""} onChange={e=>setData(d=>({...d,hypothesisReaction:e.target.value}))} placeholder="Подходит, отчасти или совсем нет? Почему?"/></section>}
+        {completed&&<details className="pr-reflection" aria-label="Углублённое исследование"><summary>Хочу исследовать глубже: пять необязательных вопросов</summary>
           <div className="pr-eyebrow">ГЛУБЖЕ В СВОЙ СЦЕНАРИЙ</div>
           <h3>Что защищает ваш привычный способ поступать?</h3>
           <p className="pr-hint">Здесь важно не только увидеть, чего вы лишаетесь, но и понять, от чего привычная реакция вас оберегает. Это исследование, а не диагноз.</p>
@@ -233,7 +252,7 @@ export default function InteractivePracticePage() {
             {data.depth?.next&&<p><strong>Мой бережный шаг:</strong> {data.depth.next}</p>}
             <p className="pr-hint">Это ваши слова, а не заключение о личности. Проверьте, насколько такая связь соответствует вашему опыту.</p>
           </div>
-        </section>}
+        </details>}
         {completed&&<div className="pr-next-week">
           <div className="pr-eyebrow">СЛЕДУЮЩИЕ СЕМЬ ДНЕЙ</div>
           <h3>Пусть это открытие не останется только мыслью</h3>
