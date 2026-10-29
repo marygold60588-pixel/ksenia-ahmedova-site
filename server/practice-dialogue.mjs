@@ -4,7 +4,7 @@ export function practiceDialogue(q, reaction = null) {
   const scene = String(q.scene || "").trim(), wish = String(q.wish || "").trim(), action = String(q.action || "").trim();
   if (!scene || !wish || !action) return { ok:false, reason:"missing_answers" };
   const context = [scene,action,wish,q.fear,q.response].join(" ").toLowerCase();
-  if (["угроз","насили","ударил","избил","принуд","опасно","боюсь за жизнь"].some(x=>context.includes(x)))
+  if (["угроз","угрож","насили","ударил","избил","принуд","опасно","боюсь за жизнь"].some(x=>context.includes(x)))
     return { ok:true, phase:"safety", hypothesis:"Молчание или уступка могли помогать сохранять безопасность. Здесь не следует искать вашу вину.", question:"Что помогло бы вам сейчас быть в большей безопасности?" };
   const asked = ["просила","просил","говорила","говорил","объясняла","объяснял"].some(x=>String(q.response||"").toLowerCase().includes(x));
   const hypothesis = asked ? "Вы уже пытались говорить о желаниях. Возможно, ваше молчание теперь связано с опытом ответа другого, а не только со страхом отказа." : "Возможно, молчание позволяло не проверять отношение другого к вашему желанию. Но это мог быть и осознанный выбор.";

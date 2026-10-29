@@ -3,7 +3,7 @@ export type Reflection = {title:string;hypothesis:string;question:string;alterna
 const has=(s:string,words:string[])=>words.some(w=>s.toLowerCase().includes(w));
 export function interpretLocally(q:PracticeAnswers):Reflection {
  const context=[q.scene,q.fear,q.response,q.repeated].join(" ").toLowerCase();
- if(has(context,["удар","избил","угроз","насили","боюсь за жизнь","принуд","опасно"])){
+ if(has(context,["удар","избил","угроз","угрож","насили","боюсь за жизнь","принуд","опасно"])){
   return {title:"Безопасность важнее интерпретации",hypothesis:"В описанной ситуации молчание или уступка могли быть способом сохранить безопасность. Не стоит считать это недостатком характера или заставлять себя возражать.",question:"Что сейчас помогло бы вам почувствовать себя в большей безопасности?",alternative:"Если есть угроза, обратитесь к человеку, которому доверяете, или в местную службу помощи."};
  }
  if(has(context,["сам догад","сам понял","без просьб","должен понять","сама догад"])){

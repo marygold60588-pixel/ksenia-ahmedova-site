@@ -2,7 +2,7 @@ export type PracticeReaction = "resonates" | "partly" | "disagree";
 export type PracticeInquiry = {scene:string;action:string;wish:string;fear:string;response:string;repeated:string};
 export function adaptiveReflection(q:PracticeInquiry, reaction?:PracticeReaction) {
  const context=Object.values(q).join(" ").toLowerCase();
- const danger=["угроз","насили","ударил","избил","принуд","опасно","боюсь за жизнь"].some(x=>context.includes(x));
+ const danger=["угроз","угрож","насили","ударил","избил","принуд","опасно","боюсь за жизнь"].some(x=>context.includes(x));
  if(danger) return {phase:"safety" as const,hypothesis:"Если в ситуации присутствовали угрозы или насилие, уступка могла быть способом защитить себя. Ответственность за угрозы несёт тот, кто их создаёт.",alternative:"В первую очередь важно учитывать реальную безопасность, а не искать бессознательную причину уступки.",question:"Что помогло бы вам сейчас чувствовать себя безопаснее?"};
  const spoke=/просил|просила|говорил|говорила|объяснял|объясняла/i.test(q.response);
  const hypothesis=spoke?"Вы уже пытались говорить о своём желании. Возможно, на ваше решение повлиял опыт реального ответа другого человека.":"Возможно, отказ от собственного желания помогал избежать неопределённости: как другой отреагирует, если вы скажете о важном для себя?";
