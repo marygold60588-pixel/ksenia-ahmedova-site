@@ -50,6 +50,7 @@ const CONTENT_TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".map": "application/json; charset=utf-8",
+  ".mp3": "audio/mpeg",
   ".mp4": "video/mp4",
   ".png": "image/png",
   ".svg": "image/svg+xml",
@@ -891,10 +892,15 @@ async function sendFile(res, filePath) {
   const ext = path.extname(filePath).toLowerCase();
   const type = CONTENT_TYPES[ext] || "application/octet-stream";
   const stat = await fs.stat(filePath);
-  res.writeHead(200, {
+  const headers = {
     "Content-Type": type,
     "Content-Length": stat.size,
-  });
+  };
+  // Hashed Vite assets can be cached long-term; HTML must stay fresh after deploys.
+  if (filePath.replace(/\\/g, "/").includes("/assets/")) {
+    headers["Cache-Control"] = "public, max-age=31536000, immutable";
+  }
+  res.writeHead(200, headers);
   createReadStream(filePath).pipe(res);
 }
 
@@ -905,6 +911,7 @@ async function sendIndexHtml(res, urlPath) {
   res.writeHead(200, {
     "Content-Type": "text/html; charset=utf-8",
     "Content-Length": buf.length,
+    "Cache-Control": "no-cache",
   });
   res.end(buf);
 }
@@ -1119,6 +1126,14 @@ async function handleOutbound(req, res) {
   sendJson(req, res, 200, result);
 }
 
+function isStaticAssetPath(urlPath) {
+  const clean = urlPath.split("?")[0];
+  return (
+    clean.startsWith("/assets/") ||
+    /\.(?:js|css|map|mjs|json|png|jpe?g|gif|webp|svg|ico|woff2?|mp4|mp3|txt|xml)$/i.test(clean)
+  );
+}
+
 async function handleStatic(req, res, urlPath) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     sendJson(req, res, 405, { ok: false });
@@ -1139,7 +1154,13 @@ async function handleStatic(req, res, urlPath) {
       return;
     }
   } catch {
-    // Fall through to SPA index for unknown paths.
+    // Missing hashed assets must not fall back to index.html:
+    // browsers treat that HTML as a JS module and the React app stays blank.
+    if (isStaticAssetPath(urlPath)) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+      res.end("Not found");
+      return;
+    }
   }
 
   try {
