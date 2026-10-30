@@ -3,6 +3,8 @@ import Footer from "@/components/layout/Footer";
 import { site } from "@/content";
 import { usePageMeta } from "@/lib/page-meta";
 
+const articlesMeta = { title: "Статьи о психологии отношений — Ксения Ахмедова", description: "Психоаналитические статьи о страхе отказа, отвержении, просьбах и границах.", canonical: "https://ksenia-ahmedova.ru/articles", ogType: "website" };
+
 const articles = [
   { href: "/strah-otverzheniya", title: "Страх отвержения: почему отказ ощущается как «меня нет»", description: "Когда чужое «нет» переживается как угроза собственной ценности." },
   { href: "/boyus-prosit", title: "Почему я боюсь просить", description: "Почему простая просьба может ощущаться как опасность и что стоит за этим страхом." },
@@ -11,7 +13,7 @@ const articles = [
 ];
 
 export default function ArticlesPage() {
-  usePageMeta({ title: "Статьи о психологии отношений — Ксения Ахмедова", description: "Психоаналитические статьи о страхе отказа, отвержении, просьбах и границах." });
+  usePageMeta(articlesMeta);
   return (
     <div className="article-page">
       <Noise />
