@@ -8,7 +8,7 @@ export type LeadPayload = {
   intent: LeadIntent;
   contactChannel?: ContactChannel;
   message?: string;
-  source: "site-form" | "paper-card" | "agent";
+  source: "site-form" | "paper-card" | "agent" | "practice-self-refusal";
   createdAt: string;
 };
 

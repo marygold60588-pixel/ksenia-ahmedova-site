@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { submitLead } from "@/lib/leads";
 import { reachGoal } from "@/lib/metrika";
 import { interpretLocally } from "@/lib/practiceInterpretation";
 import { adaptiveReflection, type PracticeReaction } from "@/lib/practiceAdaptive";
@@ -68,6 +69,13 @@ export default function InteractivePracticePage() {
   const [aiAdult,setAiAdult] = useState(false);
   const [notice,setNotice] = useState("");
   const [personalReviewOpen,setPersonalReviewOpen] = useState(false);
+  const [reviewFormOpen,setReviewFormOpen] = useState(false);
+  const [reviewName,setReviewName] = useState("");
+  const [reviewContact,setReviewContact] = useState("");
+  const [reviewConsent,setReviewConsent] = useState(false);
+  const [reviewSending,setReviewSending] = useState(false);
+  const [reviewSent,setReviewSent] = useState(false);
+  const [reviewError,setReviewError] = useState("");
   const [feedbackSending,setFeedbackSending] = useState(false);
   const [feedbackSent,setFeedbackSent] = useState(false);
   const [counts,setCounts] = useState<{open:number;start:number;complete:number;feedback:number}|null>(null);
@@ -160,11 +168,56 @@ export default function InteractivePracticePage() {
   }
   function exportReviewRequest() {
     const q=data.inquiry;
-    const lines=["ЗАПРОС НА ЛИЧНЫЙ ПИСЬМЕННЫЙ РАЗБОР","Подготовлен на моём устройстве. Не отправлен на сайт.","",...steps.map((s,i)=>`${i+1}. ${s.title} — ${s.question}\n${q[s.key] || "Не заполнено"}`),"",`Реакция на гипотезу: ${data.adaptiveReaction==="resonates"?"Откликается":data.adaptiveReaction==="partly"?"Отчасти":data.adaptiveReaction==="disagree"?"Не похоже":"Не указана"}`,"", "Дополнительные ответы:", ...Object.entries(data.depth||{}).map(([k,v])=>`${k}: ${v}`)];
+    const lines=["ЗАПРОС НА ЛИЧНЫЙ ПИСЬМЕННЫЙ РАЗБОР","Подготовлен на моём устройстве. Психологические ответы в заявку на сайте не передаются.","",...steps.map((s,i)=>`${i+1}. ${s.title} — ${s.question}\n${q[s.key] || "Не заполнено"}`),"",`Реакция на гипотезу: ${data.adaptiveReaction==="resonates"?"Откликается":data.adaptiveReaction==="partly"?"Отчасти":data.adaptiveReaction==="disagree"?"Не похоже":"Не указана"}`,"", "Дополнительные ответы:", ...Object.entries(data.depth||{}).map(([k,v])=>`${k}: ${v}`)];
     const blob=new Blob([lines.join("\n\n")],{type:"text/plain;charset=utf-8"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download="zapros-na-lichnyi-razbor.txt";a.click();URL.revokeObjectURL(url);
-    setNotice("Файл с запросом сохранён на вашем устройстве. На сайт ничего не отправлено.");
+    setNotice("Файл с запросом сохранён на вашем устройстве. Психологические ответы на сервер не отправлялись.");
+  }
+  function looksLikeEmail(value: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+  function looksLikeTelegramContact(value: string) {
+    const v = value.trim();
+    if (!v || looksLikeEmail(v)) return false;
+    if (/^https?:\/\/(t\.me|telegram\.me)\//i.test(v)) return true;
+    if (/^@[a-zA-Z0-9_]{4,64}$/.test(v)) return true;
+    if (/^[a-zA-Z0-9_]{4,64}$/.test(v)) return true;
+    if (/^\+?[0-9][0-9\s\-()]{8,20}$/.test(v)) return true;
+    return false;
+  }
+  async function submitPersonalReviewRequest() {
+    if (reviewSending || reviewSent) return;
+    const name = reviewName.trim();
+    const contact = reviewContact.trim();
+    setReviewError("");
+    if (!name) { setReviewError("Укажите имя."); return; }
+    if (!contact) { setReviewError("Укажите Telegram или email для связи."); return; }
+    if (!looksLikeEmail(contact) && !looksLikeTelegramContact(contact)) {
+      setReviewError("Укажите корректный Telegram (@username) или email.");
+      return;
+    }
+    if (!reviewConsent) {
+      setReviewError("Нужно согласие на обработку контактных данных.");
+      return;
+    }
+    setReviewSending(true);
+    const result = await submitLead({
+      name,
+      contact,
+      intent: "personal_review",
+      contactChannel: looksLikeEmail(contact) ? "email" : "telegram",
+      source: "practice-self-refusal",
+      // Psychological answers are intentionally omitted.
+    });
+    setReviewSending(false);
+    if (!result.ok) {
+      setReviewError("Не удалось зарегистрировать заявку. Попробуйте ещё раз чуть позже.");
+      return;
+    }
+    setReviewSent(true);
+    setNotice("Заявка на личный письменный разбор зарегистрирована. Мы свяжемся с вами по указанному контакту.");
+    reachGoal("pilot_practice_personal_review_request");
   }
   return <div className="pr-root">
     <div className="pr-halo" aria-hidden="true"/>
@@ -221,7 +274,32 @@ export default function InteractivePracticePage() {
         </div>}
         {completed&&<details className="pr-reflection" aria-label="Необязательная интерпретация с помощью ИИ"><summary>Дополнительно: интерпретация с помощью ИИ (пока недоступна)</summary><div className="pr-eyebrow">НЕОБЯЗАТЕЛЬНЫЙ ВНЕШНИЙ СЕРВИС · НЕ ЛИЧНЫЙ РАЗБОР КСЕНИИ</div><h3>Интерпретация с помощью ИИ</h3><p>В будущей версии ИИ сможет предложить гипотезу по вашей ситуации, а вы сможете согласиться, возразить или уточнить её. Сейчас внешняя обработка ответов отключена: ваши записи никуда не отправляются.</p><p className="pr-hint">Для включения потребуется отдельное добровольное согласие с указанием провайдера, страны обработки, целей и срока хранения. До юридической и технической проверки этот модуль недоступен.</p><label className="pr-check"><input type="checkbox" checked={aiAdult} onChange={e=>setAiAdult(e.target.checked)}/> Мне исполнилось 18 лет.</label><label className="pr-check"><input type="checkbox" checked={aiConsent} onChange={e=>setAiConsent(e.target.checked)}/> Я понимаю, что для ИИ-анализа потребуется передача выбранных ответов внешнему провайдеру. Это предварительное ознакомление, не разрешение на передачу данных.</label><button className="pr-ghost" type="button" disabled>ИИ-интерпретация пока недоступна</button></details>}
         {completed&&<section className="pr-reflection" aria-label="Что стоит за опасением расстроить другого"><div className="pr-eyebrow">ЕЩЁ ОДИН ШАГ ВГЛУБЬ · НЕОБЯЗАТЕЛЬНО</div><h3>Какой реакции другого человека вы боитесь?</h3><p>Другой может отказать, рассердиться, обидеться, промолчать или отреагировать совсем иначе. Какой реакции вы ожидаете? И что, по вашим ощущениям, произойдёт <strong>с вами</strong>, если она случится?</p><label className="pr-label" htmlFor="pr-consequence">«И тогда…» — продолжите своими словами</label><textarea id="pr-consequence" rows={3} maxLength={2000} placeholder="Например: я почувствую себя виноватой; мне станет страшно, что меня бросят…" value={data.depth?.consequence||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,consequence:e.target.value}}))}/><h3>Что это скажет обо мне?</h3><p>Если вы позволите себе хотеть, а другой будет недоволен, какое представление о себе может возникнуть? «Я плохая», «я эгоист», «я разрушу отношения» — или совсем другое? Это только возможные варианты, не готовые ответы.</p><textarea rows={3} maxLength={2000} aria-label="Что для меня означает недовольство другого" placeholder="Для меня это означало бы…" value={data.depth?.innerMeaning||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,innerMeaning:e.target.value}}))}/><h3>Чьё чувство я пытаюсь регулировать?</h3><p>Бывает, мы заранее берём ответственность за чужую обиду или разочарование. А бывает, последствия действительно опасны. Что здесь относится к вашей ответственности, а что — к чувствам и решениям другого человека? Что бы вы могли сделать из позиции признания и своих чувств, и права другого человека на его реакцию? Что в этой ситуации зависит от вас, а что вы не можете решить за другого человека?</p><textarea rows={3} maxLength={2000} aria-label="Моё желание и ответственность за чувства другого" placeholder="Я замечаю, что…" value={data.depth?.permission||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,permission:e.target.value}}))}/><p className="pr-hint">Не нужно отвечать на всё сразу. Если есть реальная угроза, давление или насилие, ваша безопасность важнее исследования внутренних причин.</p></section>}
-        {completed&&<section className="pr-reflection" aria-label="Моё чувство и реакция другого"><div className="pr-eyebrow">ВАЖНОЕ НАБЛЮДЕНИЕ</div><h3>Моё чувство — и реакция другого</h3><p>Другой человек может отказать, рассердиться, промолчать или поступить по-своему. Его реакция может задеть вас. Но то, что вы переживаете, связано не только с его поступком: иногда знакомое болезненное чувство возникает ещё до ответа — от паузы, интонации или ожидания отказа.</p><p><strong>Попробуйте различить:</strong> что действительно сделал другой человек и что возникло внутри вас? Это ваше переживание, и его можно исследовать: почему оно появляется, с каким опытом связано, в чём вы нуждаетесь в этот момент?</p><p>Это не означает, что вы виноваты в своих чувствах или что другой никогда не причиняет боль. Но когда вы начинаете различать его действия и собственный внутренний отклик, появляется больше свободы выбирать, как позаботиться о себе и что делать дальше.</p><label className="pr-label" htmlFor="pr-own-feeling">Как вы назвали бы своё чувство в этой ситуации?</label><textarea id="pr-own-feeling" rows={2} maxLength={2000} placeholder="Например: тревога, вина, злость, одиночество — или совсем другое…" value={data.depth?.feeling||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,feeling:e.target.value}}))}/>{data.depth?.feeling?.trim()&&<p className="pr-hint">Вы назвали своё переживание: «{data.depth.feeling.trim()}». Попробуйте удержать различие между этим чувством и тем, что другой человек действительно сделал.</p>}</section>}{completed&&<section className="pr-reflection" aria-label="Личный письменный разбор от Ксении Ахмедовой"><div className="pr-eyebrow">ПРОДОЛЖЕНИЕ ПРАКТИКИ · ПО ЖЕЛАНИЮ</div><h3>Получить личный письменный разбор от Ксении Ахмедовой</h3><p>Вы можете заказать индивидуальный взгляд специалиста на вашу ситуацию и ответы. Бесплатная практика при этом остаётся доступной всем.</p><p className="pr-hint">Приём и оплата заказов пока не открыты. Мы готовим защищённую передачу ответов и закрытый кабинет. Ваши записи сейчас остаются в браузере.</p><button className="pr-primary" type="button" onClick={()=>setPersonalReviewOpen(v=>!v)} aria-expanded={personalReviewOpen}>{personalReviewOpen?"Свернуть информацию":"Узнать о личном разборе"}</button>{personalReviewOpen&&<div className="pr-insight"><span>КАК ЭТО БУДЕТ РАБОТАТЬ</span><p>1. Вы отдельно разрешите передачу выбранных ответов. 2. После оформления запроса Ксения прочитает историю и подготовит письменный разбор. 3. Результат появится в защищённом личном доступе.</p><p>Пока можно сохранить свой запрос в текстовый файл. Не отправляйте его через обычную форму обратной связи: она не предназначена для конфиденциальных историй.</p><button className="pr-ghost" type="button" onClick={exportReviewRequest}>Сохранить ответы для личного разбора (.txt)</button></div>}</section>}
+        {completed&&<section className="pr-reflection" aria-label="Моё чувство и реакция другого"><div className="pr-eyebrow">ВАЖНОЕ НАБЛЮДЕНИЕ</div><h3>Моё чувство — и реакция другого</h3><p>Другой человек может отказать, рассердиться, промолчать или поступить по-своему. Его реакция может задеть вас. Но то, что вы переживаете, связано не только с его поступком: иногда знакомое болезненное чувство возникает ещё до ответа — от паузы, интонации или ожидания отказа.</p><p><strong>Попробуйте различить:</strong> что действительно сделал другой человек и что возникло внутри вас? Это ваше переживание, и его можно исследовать: почему оно появляется, с каким опытом связано, в чём вы нуждаетесь в этот момент?</p><p>Это не означает, что вы виноваты в своих чувствах или что другой никогда не причиняет боль. Но когда вы начинаете различать его действия и собственный внутренний отклик, появляется больше свободы выбирать, как позаботиться о себе и что делать дальше.</p><label className="pr-label" htmlFor="pr-own-feeling">Как вы назвали бы своё чувство в этой ситуации?</label><textarea id="pr-own-feeling" rows={2} maxLength={2000} placeholder="Например: тревога, вина, злость, одиночество — или совсем другое…" value={data.depth?.feeling||""} onChange={e=>setData(d=>({...d,depth:{...d.depth,feeling:e.target.value}}))}/>{data.depth?.feeling?.trim()&&<p className="pr-hint">Вы назвали своё переживание: «{data.depth.feeling.trim()}». Попробуйте удержать различие между этим чувством и тем, что другой человек действительно сделал.</p>}</section>}
+        {completed&&<section className="pr-reflection" aria-label="Личный письменный разбор от Ксении Ахмедовой">
+          <div className="pr-eyebrow">ПРОДОЛЖЕНИЕ ПРАКТИКИ · ПО ЖЕЛАНИЮ</div>
+          <h3>Получить личный письменный разбор от Ксении Ахмедовой</h3>
+          <p>Вы можете заказать индивидуальный взгляд специалиста на вашу ситуацию и ответы. Бесплатная практика при этом остаётся доступной всем.</p>
+          <p className="pr-hint">Заявка сейчас принимает только имя и контакт для связи. Психологические ответы из практики автоматически не передаются. Оплата и защищённая передача материалов для разбора будут открыты отдельно.</p>
+          <div className="pr-actions">
+            <button className="pr-primary" type="button" onClick={()=>{setReviewFormOpen(v=>!v);setReviewError("");}} aria-expanded={reviewFormOpen}>{reviewFormOpen?"Свернуть форму заявки":"Запросить личный письменный разбор"}</button>
+            <button className="pr-ghost" type="button" onClick={()=>setPersonalReviewOpen(v=>!v)} aria-expanded={personalReviewOpen}>{personalReviewOpen?"Свернуть информацию":"Узнать о личном разборе"}</button>
+          </div>
+          {reviewFormOpen&&!reviewSent&&<div className="pr-review-form">
+            <p className="pr-hint">В заявку уходят только имя и контакт. Ответы на вопросы практики остаются в вашем браузере, пока вы сами не решите передать их иным способом.</p>
+            <label className="pr-label" htmlFor="pr-review-name">Имя</label>
+            <input id="pr-review-name" className="pr-input" autoComplete="name" maxLength={80} value={reviewName} onChange={e=>setReviewName(e.target.value)} placeholder="Как к вам обращаться"/>
+            <label className="pr-label" htmlFor="pr-review-contact">Контакт для связи (Telegram или email)</label>
+            <input id="pr-review-contact" className="pr-input" autoComplete="email" maxLength={120} value={reviewContact} onChange={e=>setReviewContact(e.target.value)} placeholder="@username или name@example.com"/>
+            <label className="pr-check"><input type="checkbox" checked={reviewConsent} onChange={e=>setReviewConsent(e.target.checked)}/> Согласна / согласен на обработку указанных контактных данных для связи по заявке на личный письменный разбор.</label>
+            {reviewError&&<p className="pr-notice" role="alert">{reviewError}</p>}
+            <div className="pr-actions">
+              <button className="pr-primary" type="button" disabled={reviewSending} onClick={()=>void submitPersonalReviewRequest()}>{reviewSending?"Отправляем заявку…":"Отправить заявку"}</button>
+              <button className="pr-ghost" type="button" onClick={exportReviewRequest}>Сохранить ответы для личного разбора (.txt)</button>
+            </div>
+          </div>}
+          {reviewSent&&<p className="pr-notice" role="status">Заявка зарегистрирована. Психологические ответы в Telegram и на сервер не отправлялись.</p>}
+          {personalReviewOpen&&<div className="pr-insight"><span>КАК ЭТО БУДЕТ РАБОТАТЬ</span><p>1. Вы оставляете имя и контакт для связи. 2. При необходимости отдельно передаёте материалы для разбора безопасным способом. 3. Ксения готовит письменный разбор. 4. Результат будет доступен после запуска защищённого формата работы.</p><p>Психологические ответы из этой практики не уходят автоматически вместе с заявкой. Их можно сохранить в TXT на своём устройстве.</p><button className="pr-ghost" type="button" onClick={exportReviewRequest}>Сохранить ответы для личного разбора (.txt)</button></div>}
+        </section>}
         {completed&&<section className="pr-reflection" aria-label="Диалог с вашей историей"><div className="pr-eyebrow">ДИАЛОГ С ВАШЕЙ ИСТОРИЕЙ · БЕЗ ПЕРЕДАЧИ ДАННЫХ</div><h3>Что могло происходить внутри?</h3><p>{adaptive.hypothesis}</p><p><strong>Другой возможный взгляд:</strong> {adaptive.alternative}</p><p>{adaptive.question}</p>{adaptive.phase!=="safety"&&<div className="pr-actions">{(["resonates","partly","disagree"] as const).map((reaction)=><button key={reaction} type="button" className={data.adaptiveReaction===reaction?"pr-primary":"pr-ghost"} onClick={()=>setData(d=>({...d,adaptiveReaction:reaction}))}>{reaction==="resonates"?"Откликается":reaction==="partly"?"Отчасти":"Не похоже"}</button>)}</div>}{data.adaptiveReaction&&adaptive.phase==="reflection"&&<p className="pr-hint">Ваша реакция учтена. Вы можете изменить её: это исследование, а не тест с правильным ответом.</p>}<p className="pr-hint">Ответ сформирован на вашем устройстве по ограниченным правилам. Это не ИИ, диагноз или заключение о причинах ваших поступков.</p></section>}
         {completed&&<section className="pr-reflection"><h3>{localInterpretation.title}</h3><p>{localInterpretation.hypothesis}</p><p><strong>Вопрос для размышления:</strong> {localInterpretation.question}</p><p className="pr-hint"><strong>Другое возможное объяснение:</strong> {localInterpretation.alternative}</p><p className="pr-hint">Это локально выбранная гипотеза по ключевым словам, а не индивидуальный анализ нейросети.</p><label className="pr-label" htmlFor="pr-hypothesis-reaction">Ваша реакция</label><textarea id="pr-hypothesis-reaction" rows={3} value={data.hypothesisReaction||""} onChange={e=>setData(d=>({...d,hypothesisReaction:e.target.value}))} placeholder="Подходит, отчасти или совсем нет? Почему?"/></section>}
         {completed&&<details className="pr-reflection" aria-label="Углублённое исследование"><summary>Если вы готовы исследовать глубже — ещё пять вопросов</summary>

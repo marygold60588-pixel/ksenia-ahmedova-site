@@ -1,4 +1,4 @@
-export type LeadIntent = "diagnosis" | "consultation" | "gift";
+export type LeadIntent = "diagnosis" | "consultation" | "gift" | "personal_review";
 
 export type ContactChannel = "telegram" | "max" | "email";
 

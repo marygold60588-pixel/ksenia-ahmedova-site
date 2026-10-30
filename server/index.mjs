@@ -34,11 +34,13 @@ const INTENTS = {
   diagnosis: "Диагностика сценария",
   consultation: "Консультация",
   gift: "Гайд",
+  personal_review: "Личный письменный разбор",
 };
 
-const SOURCES = new Set(["site-form", "paper-card", "agent"]);
+const SOURCES = new Set(["site-form", "paper-card", "agent", "practice-self-refusal"]);
 const CHANNELS = new Set(["telegram", "max", "email"]);
 const LEADS_FILE = path.resolve(process.cwd(), "data", "leads.jsonl");
+const TELEGRAM_FAILURES_FILE = path.resolve(process.cwd(), "data", "lead-telegram-failures.jsonl");
 
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -201,11 +203,47 @@ function parseLead(raw) {
   if (!intent) return { lead: null, reason: "intent" };
   if (message === null) return { lead: null, reason: "message" };
   if (!source) return { lead: null, reason: "source" };
-  if (contactChannel === "email" && !looksLikeEmail(contact)) {
-    return { lead: null, reason: "contact_email" };
+
+  // Auto-detect channel for practice review form (single contact field).
+  let resolvedChannel = contactChannel;
+  if (resolvedChannel === "не указан") {
+    if (looksLikeEmail(contact)) resolvedChannel = "email";
+    else if (looksLikeTelegramContact(contact)) resolvedChannel = "telegram";
   }
 
-  return { lead: { name, contact, intent, message, source, contactChannel, createdAt }, reason: null };
+  if (resolvedChannel === "email" && !looksLikeEmail(contact)) {
+    return { lead: null, reason: "contact_email" };
+  }
+  if (resolvedChannel === "telegram" && !looksLikeTelegramContact(contact)) {
+    return { lead: null, reason: "contact_telegram" };
+  }
+  if (intent === "personal_review" && resolvedChannel === "не указан") {
+    return { lead: null, reason: "contact_channel" };
+  }
+
+  return {
+    lead: {
+      name,
+      contact,
+      intent,
+      message: intent === "personal_review" ? "" : message,
+      source,
+      contactChannel: resolvedChannel,
+      createdAt,
+    },
+    reason: null,
+  };
+}
+
+function looksLikeTelegramContact(value) {
+  const v = String(value || "").trim();
+  if (!v) return false;
+  if (looksLikeEmail(v)) return false;
+  if (/^https?:\/\/(t\.me|telegram\.me)\//i.test(v)) return true;
+  if (/^@[a-zA-Z0-9_]{4,64}$/.test(v)) return true;
+  if (/^[a-zA-Z0-9_]{4,64}$/.test(v)) return true;
+  if (/^\+?[0-9][0-9\s\-()]{8,20}$/.test(v)) return true;
+  return false;
 }
 
 async function saveLead(lead) {
@@ -226,6 +264,35 @@ async function saveLead(lead) {
     return { ok: true, id: record.id };
   } catch (error) {
     return { ok: false, reason: "save_failed", errorCode: networkErrorCode(error) };
+  }
+}
+
+async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
+  const record = {
+    id: crypto.randomUUID(),
+    leadId: leadId || null,
+    intent: lead.intent,
+    source: lead.source,
+    createdAt: new Date().toISOString(),
+    reason: telegram?.reason || "telegram_unknown",
+    errorCode: telegram?.errorCode || null,
+    telegramStatus: telegram?.telegramStatus || null,
+    retry: true,
+  };
+  try {
+    await fs.mkdir(path.dirname(TELEGRAM_FAILURES_FILE), { recursive: true });
+    await fs.appendFile(TELEGRAM_FAILURES_FILE, `${JSON.stringify(record)}\n`, "utf8");
+    console.error("[leads] telegram delivery failure recorded", {
+      leadId: record.leadId,
+      reason: record.reason,
+      errorCode: record.errorCode,
+    });
+    return { ok: true };
+  } catch (error) {
+    console.error("[leads] telegram delivery failure log failed", {
+      errorCode: networkErrorCode(error),
+    });
+    return { ok: false };
   }
 }
 
@@ -974,8 +1041,22 @@ async function handleLeads(req, res) {
   logEmailResult(owner.email, "owner");
   logEmailResult(visitor, "visitor");
 
-  if (saved.ok || ownerNotificationOk(owner)) {
-    sendJson(req, res, 200, { ok: true });
+  // Personal review: keep the lead even if Telegram fails, and queue retry explicitly.
+  if (saved.ok && lead.intent === "personal_review" && !owner.telegram?.ok) {
+    await recordTelegramDeliveryFailure(saved.id, lead, owner.telegram);
+  }
+
+  // Client success requires registration. Notification failure alone is not enough.
+  if (saved.ok) {
+    sendJson(req, res, 200, {
+      ok: true,
+      telegramDelivered: Boolean(owner.telegram?.ok),
+    });
+    return;
+  }
+
+  if (ownerNotificationOk(owner)) {
+    sendJson(req, res, 200, { ok: true, telegramDelivered: Boolean(owner.telegram?.ok) });
     return;
   }
 

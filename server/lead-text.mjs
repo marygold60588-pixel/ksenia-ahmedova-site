@@ -4,6 +4,7 @@ const INTENTS = {
   diagnosis: "Диагностика сценария",
   consultation: "Консультация",
   gift: "Гайд",
+  personal_review: "Личный письменный разбор",
 };
 
 const CHANNELS = {
@@ -21,6 +22,17 @@ export function formatLeadText(lead) {
   const when = Number.isNaN(source.getTime())
     ? new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })
     : source.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
+
+  if (lead.intent === "personal_review") {
+    return [
+      "Новая заявка — личный письменный разбор",
+      "",
+      `Имя: ${lead.name}`,
+      `Контакт: ${lead.contact}`,
+      "Источник: практика «Не отказываться от себя»",
+      `Дата: ${when}`,
+    ].join("\n");
+  }
 
   return [
     "Новая заявка с сайта",
