@@ -1,3 +1,4 @@
+import ArticlesPage from "@/pages/ArticlesPage";
 import InteractivePracticePage from "@/pages/InteractivePracticePage";
 import { Route, Routes } from "react-router-dom";
 import YandexMetrikaHits from "@/components/analytics/YandexMetrikaHits";
@@ -16,6 +17,7 @@ export default function App() {
       <YandexMetrikaHits />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/strah-otverzheniya" element={<StrahOtverzheniyaPage />} />
         <Route path="/boyus-prosit" element={<BoyusPrositPage />} />
         <Route path="/strah-otkaza-i-ugozhdenie" element={<StrahOtkazaIUgozhdeniePage />} />
