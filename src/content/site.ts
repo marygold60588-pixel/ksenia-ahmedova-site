@@ -11,6 +11,7 @@ export const site: SiteContent = {
   nav: [
     { label: "Практика", href: "#expert" },
     { label: "Консультации", href: "#consult" },
+    { label: "Статьи", href: "/articles" },
     { label: "Бесплатная практика", href: "#free-practice" },
     { label: "Заявка", href: "#request" },
   ],
