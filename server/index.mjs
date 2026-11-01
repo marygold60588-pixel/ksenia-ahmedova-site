@@ -14,7 +14,7 @@ import { formatLeadText } from "./lead-text.mjs";
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "personal-review-leads";
+const BUILD_ID = "personal-review-relay-diag";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -1048,9 +1048,14 @@ async function handleLeads(req, res) {
 
   // Client success requires registration. Notification failure alone is not enough.
   if (saved.ok) {
+    const telegramDelivered = Boolean(owner.telegram?.ok);
     sendJson(req, res, 200, {
       ok: true,
-      telegramDelivered: Boolean(owner.telegram?.ok),
+      telegramDelivered,
+      // Safe reason only — no secrets, URLs, or payload contents.
+      ...(telegramDelivered
+        ? {}
+        : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
     });
     return;
   }
@@ -1270,6 +1275,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         build: BUILD_ID,
         intents: Object.keys(INTENTS),
+        telegramRelayConfigured: telegramRelayConfigured(),
       });
       return;
     }
