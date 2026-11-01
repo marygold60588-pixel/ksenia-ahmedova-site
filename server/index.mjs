@@ -14,7 +14,7 @@ import { formatLeadText } from "./lead-text.mjs";
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "multichannel-leads";
+const BUILD_ID = "personal-review-leads";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -1266,7 +1266,11 @@ const server = http.createServer(async (req, res) => {
         sendJson(req, res, 405, { ok: false });
         return;
       }
-      sendJson(req, res, 200, { ok: true });
+      sendJson(req, res, 200, {
+        ok: true,
+        build: BUILD_ID,
+        intents: Object.keys(INTENTS),
+      });
       return;
     }
 
