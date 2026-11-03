@@ -11,6 +11,7 @@ import { createReadStream } from "node:fs";
 import { maxConfigured, sendMax } from "./max.mjs";
 import { emailConfigured, looksLikeEmail, sendOwnerEmail, sendVisitorEmail } from "./email.mjs";
 import { formatLeadText } from "./lead-text.mjs";
+import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.mjs";
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
@@ -294,12 +295,6 @@ async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
     });
     return { ok: false };
   }
-}
-
-function telegramRelayEnv() {
-  const url = typeof process.env.TELEGRAM_RELAY_URL === "string" ? process.env.TELEGRAM_RELAY_URL.trim() : "";
-  const secret = typeof process.env.TELEGRAM_RELAY_SECRET === "string" ? process.env.TELEGRAM_RELAY_SECRET.trim() : "";
-  return { url, secret };
 }
 
 function telegramRelayConfigured() {
@@ -663,8 +658,11 @@ function postTelegramRelay(relayUrl, secret, text) {
   });
 }
 
-async function sendTelegramMessage(text) {
-  const { url: urlRaw, secret } = telegramRelayEnv();
+async function sendTelegramMessage(text, relay = null) {
+  const { url: urlRaw, secret, route } = relay || {
+    ...telegramRelayEnv(),
+    route: "legacy_relay",
+  };
   if (!urlRaw || !secret) {
     return { ok: false, status: 500, reason: "not_configured" };
   }
@@ -676,7 +674,7 @@ async function sendTelegramMessage(text) {
     return { ok: false, status: 500, reason: "relay_invalid_url" };
   }
 
-  console.info("[leads] telegram relay attempt");
+  console.info("[leads] telegram relay attempt", { route: route || "legacy_relay" });
 
   try {
     const response = await postTelegramRelay(relayUrl, secret, text);
@@ -684,7 +682,7 @@ async function sendTelegramMessage(text) {
     const payload = response.payload;
 
     if (httpStatus >= 200 && httpStatus < 300 && payload && payload.ok === true) {
-      return { ok: true, status: 200, telegramStatus: httpStatus };
+      return { ok: true, status: 200, telegramStatus: httpStatus, route: route || "legacy_relay" };
     }
 
     return {
@@ -692,6 +690,7 @@ async function sendTelegramMessage(text) {
       status: 502,
       reason: "telegram_rejected",
       telegramStatus: httpStatus,
+      route: route || "legacy_relay",
     };
   } catch (error) {
     const errorCode = networkErrorCode(error);
@@ -701,14 +700,21 @@ async function sendTelegramMessage(text) {
         status: 502,
         reason: "telegram_timeout",
         errorCode: errorCode || "ETIMEDOUT",
+        route: route || "legacy_relay",
       };
     }
-    return { ok: false, status: 502, reason: "telegram_network", errorCode };
+    return {
+      ok: false,
+      status: 502,
+      reason: "telegram_network",
+      errorCode,
+      route: route || "legacy_relay",
+    };
   }
 }
 
 async function sendTelegram(lead) {
-  return sendTelegramMessage(formatLeadText(lead));
+  return sendTelegramMessage(formatLeadText(lead), resolveTelegramRelay(lead));
 }
 
 function unwrapSettled(result, fallback) {
