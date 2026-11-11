@@ -83,10 +83,9 @@ export default function InteractivePracticePage() {
   const [reviewError,setReviewError] = useState("");
   const [feedbackSending,setFeedbackSending] = useState(false);
   const [feedbackSent,setFeedbackSent] = useState(false);
-  const [counts,setCounts] = useState<{open:number;start:number;complete:number;feedback:number}|null>(null);
   const started = useRef(false);
   const finished = useRef(false);
-  useEffect(()=>{ reachGoal("pilot_practice_open"); void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"open"})}).catch(()=>{}); void fetch(practiceApiUrl("/api/practice/stats")).then(r=>r.ok?r.json():null).then(j=>{if(j?.ok)setCounts(j.counts);}).catch(()=>{}); },[]);
+  useEffect(()=>{ reachGoal("pilot_practice_open"); void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"open"})}).catch(()=>{}); },[]);
   function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"start"})}).catch(()=>{});}}
   function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"complete"})}).catch(()=>{});}}
   useEffect(()=>{ try { localStorage.setItem(KEY,JSON.stringify(data)); } catch { setNotice("Не удалось сохранить запись на этом устройстве."); } },[data]);
@@ -161,7 +160,6 @@ export default function InteractivePracticePage() {
       if(!response.ok)throw new Error("send_failed");
       setFeedbackSent(true);
       setNotice("Спасибо! Ваш отклик отправлен и сохранён на сайте.");
-      setCounts(c=>c?{...c,feedback:c.feedback+1}:c);
       reachGoal("pilot_practice_feedback_submit");
     } catch {setNotice("Не удалось отправить отклик. Попробуйте ещё раз чуть позже — текст сохранён в этом браузере.");}
     finally {setFeedbackSending(false);}
@@ -233,7 +231,6 @@ export default function InteractivePracticePage() {
       <p className="pr-intro">От страха чужого «нет» — к вниманию к собственному желанию. Здесь нет правильных ответов и необходимости что-то менять прямо сейчас.</p>
       <div className="pr-ornament" aria-hidden="true">✧ ───────── ✧</div>
       <p className="pr-hint">Шесть шагов. Ваши ответы постепенно соединятся в личную карту наблюдений. Участие бесплатно — 0 ₽. Звук необязателен.</p>
-      {counts&&<p className="pr-hint" aria-label="Счётчик прохождений">Открыли практику: {counts.open} · Начали: {counts.start} · Завершили: {counts.complete} · Оставили отклик: {counts.feedback}</p>}
       <nav className="pr-tabs" aria-label="Разделы практики">
         {([{id:"inquiry",name:"Исследование"},{id:"journal",name:"Дневник"},{id:"map",name:"Моя карта"},{id:"feedback",name:"Обратная связь"}] as const).map(t=><button type="button" key={t.id} className={tab===t.id?"active":""} onClick={()=>{setTab(t.id);setNotice("");}} aria-current={tab===t.id?"page":undefined}>{t.name}</button>)}
       </nav>
