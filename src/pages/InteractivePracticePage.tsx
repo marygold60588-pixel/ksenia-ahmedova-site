@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getApiBaseUrl } from "@/api/client";
 import { submitLead } from "@/lib/leads";
 import { reachGoal } from "@/lib/metrika";
 import { interpretLocally } from "@/lib/practiceInterpretation";
 import { adaptiveReflection, type PracticeReaction } from "@/lib/practiceAdaptive";
 import "./InteractivePracticePage.css";
+
+function practiceApiUrl(path: `/api/practice/${"event" | "stats" | "feedback"}`) {
+  return `${getApiBaseUrl()}${path}`;
+}
 
 type Inquiry = { scene: string; action: string; wish: string; fear: string; response: string; repeated: string };
 type Entry = { id: string; at: string; situation: string; did: string; wanted: string; fear?: string; other: string };
@@ -81,9 +86,9 @@ export default function InteractivePracticePage() {
   const [counts,setCounts] = useState<{open:number;start:number;complete:number;feedback:number}|null>(null);
   const started = useRef(false);
   const finished = useRef(false);
-  useEffect(()=>{ reachGoal("pilot_practice_open"); void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"open"})}).catch(()=>{}); void fetch("/api/practice/stats").then(r=>r.ok?r.json():null).then(j=>{if(j?.ok)setCounts(j.counts);}).catch(()=>{}); },[]);
-  function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"start"})}).catch(()=>{});}}
-  function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");void fetch("/api/practice/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"complete"})}).catch(()=>{});}}
+  useEffect(()=>{ reachGoal("pilot_practice_open"); void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"open"})}).catch(()=>{}); void fetch(practiceApiUrl("/api/practice/stats")).then(r=>r.ok?r.json():null).then(j=>{if(j?.ok)setCounts(j.counts);}).catch(()=>{}); },[]);
+  function recordStart(){if(!started.current){started.current=true;reachGoal("pilot_practice_start");void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"start"})}).catch(()=>{});}}
+  function recordFinish(){if(!finished.current){finished.current=true;reachGoal("pilot_practice_complete");void fetch(practiceApiUrl("/api/practice/event"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event:"complete"})}).catch(()=>{});}}
   useEffect(()=>{ try { localStorage.setItem(KEY,JSON.stringify(data)); } catch { setNotice("Не удалось сохранить запись на этом устройстве."); } },[data]);
   const completed = steps.every(s=>data.inquiry[s.key].trim());
   const filled = steps.filter(s=>data.inquiry[s.key].trim()).length;
@@ -152,7 +157,7 @@ export default function InteractivePracticePage() {
     if(feedbackSending || feedbackSent || !feedbackConsent || (!data.feedback.trim()&&!data.criticism.trim()&&!data.usefulness))return;
     setFeedbackSending(true);
     try {
-      const response=await fetch("/api/practice/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({feedback:data.feedback,criticism:data.criticism,usefulness:data.usefulness,consent,privacyConsent:feedbackConsent})});
+      const response=await fetch(practiceApiUrl("/api/practice/feedback"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({feedback:data.feedback,criticism:data.criticism,usefulness:data.usefulness,consent,privacyConsent:feedbackConsent})});
       if(!response.ok)throw new Error("send_failed");
       setFeedbackSent(true);
       setNotice("Спасибо! Ваш отклик отправлен и сохранён на сайте.");
