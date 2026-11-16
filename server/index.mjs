@@ -15,7 +15,7 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-durable-relay-secret-2";
+const BUILD_ID = "leads-durable-relay-secret-3";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -55,13 +55,35 @@ const TELEGRAM_FAILURES_FILE = path.join(LEADS_DATA_DIR, "lead-telegram-failures
 const SHEET_FAILURES_FILE = path.join(LEADS_DATA_DIR, "lead-sheet-failures.jsonl");
 
 function leadsPersistConfig() {
-  const url =
+  let url =
     typeof process.env.LEADS_PERSIST_WEBHOOK_URL === "string" && process.env.LEADS_PERSIST_WEBHOOK_URL.trim()
       ? process.env.LEADS_PERSIST_WEBHOOK_URL.trim()
       : LEADS_PERSIST_WEBHOOK_URL_DEFAULT;
-  const secret =
+  let secret =
     typeof process.env.LEADS_PERSIST_SECRET === "string" ? process.env.LEADS_PERSIST_SECRET.trim() : "";
+  // Fallback: secret may be pasted only inside the webhook URL (?secret= / ?leads_secret=).
+  try {
+    const parsed = new URL(url);
+    const fromQuery =
+      parsed.searchParams.get("secret") ||
+      parsed.searchParams.get("leads_secret") ||
+      parsed.searchParams.get("LEADS_PERSIST_SECRET") ||
+      "";
+    if (!secret && fromQuery) secret = fromQuery.trim();
+    parsed.searchParams.delete("secret");
+    parsed.searchParams.delete("leads_secret");
+    parsed.searchParams.delete("LEADS_PERSIST_SECRET");
+    url = parsed.toString();
+  } catch {
+    /* keep raw url */
+  }
   return { url, secret };
+}
+
+function leadsEnvKeyNames() {
+  return Object.keys(process.env)
+    .filter((key) => /LEAD|PERSIST|TELEGRAM_RELAY|CONSULTATION_RELAY/i.test(key))
+    .sort();
 }
 
 function leadsVolumeConfigured() {
@@ -1587,6 +1609,7 @@ const server = http.createServer(async (req, res) => {
       }
       {
         const persist = leadsPersistConfig();
+        const rawSecret = process.env.LEADS_PERSIST_SECRET;
         sendJson(req, res, 200, {
           ok: true,
           build: BUILD_ID,
@@ -1594,6 +1617,8 @@ const server = http.createServer(async (req, res) => {
           telegramRelayConfigured: telegramRelayConfigured(),
           leadsPersistUrl: Boolean(persist.url),
           leadsPersistSecret: Boolean(persist.secret),
+          leadsPersistSecretEnvLen: typeof rawSecret === "string" ? rawSecret.trim().length : 0,
+          leadsEnvKeys: leadsEnvKeyNames(),
           leadsDataDir: leadsVolumeConfigured(),
         });
       }
