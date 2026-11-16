@@ -15,11 +15,12 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-persist-sheets-n8n";
+const BUILD_ID = "leads-durable-relay-secret";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
 const LEADS_PERSIST_TIMEOUT_MS = 20000;
+const TELEGRAM_RETRY_MS = 5 * 60 * 1000;
 const LEADS_PERSIST_WEBHOOK_URL_DEFAULT =
   "https://n8n.vsellm.info/webhook/ksenia-site-leads-6d9a1ff66528";
 
@@ -43,8 +44,15 @@ const INTENTS = {
 
 const SOURCES = new Set(["site-form", "paper-card", "agent", "practice-self-refusal"]);
 const CHANNELS = new Set(["telegram", "max", "email"]);
-const LEADS_FILE = path.resolve(process.cwd(), "data", "leads.jsonl");
-const TELEGRAM_FAILURES_FILE = path.resolve(process.cwd(), "data", "lead-telegram-failures.jsonl");
+// Prefer a mounted RF volume via LEADS_DATA_DIR (Timeweb network disk). Fallback cwd/data is ephemeral.
+const LEADS_DATA_DIR = path.resolve(
+  typeof process.env.LEADS_DATA_DIR === "string" && process.env.LEADS_DATA_DIR.trim()
+    ? process.env.LEADS_DATA_DIR.trim()
+    : path.join(process.cwd(), "data"),
+);
+const LEADS_FILE = path.join(LEADS_DATA_DIR, "leads.jsonl");
+const TELEGRAM_FAILURES_FILE = path.join(LEADS_DATA_DIR, "lead-telegram-failures.jsonl");
+const SHEET_FAILURES_FILE = path.join(LEADS_DATA_DIR, "lead-sheet-failures.jsonl");
 
 function leadsPersistConfig() {
   const url =
@@ -54,6 +62,10 @@ function leadsPersistConfig() {
   const secret =
     typeof process.env.LEADS_PERSIST_SECRET === "string" ? process.env.LEADS_PERSIST_SECRET.trim() : "";
   return { url, secret };
+}
+
+function leadsVolumeConfigured() {
+  return typeof process.env.LEADS_DATA_DIR === "string" && process.env.LEADS_DATA_DIR.trim().length > 0;
 }
 
 const CONTENT_TYPES = {
@@ -291,6 +303,9 @@ async function persistLeadDurable(lead, extras = {}) {
   if (!urlRaw) {
     return { ok: false, reason: "persist_not_configured" };
   }
+  if (!secret) {
+    return { ok: false, reason: "persist_secret_required" };
+  }
   let persistUrl;
   try {
     persistUrl = new URL(urlRaw);
@@ -311,6 +326,8 @@ async function persistLeadDurable(lead, extras = {}) {
     consentFlag: lead.privacyConsent === true ? "true" : "false",
     telegramError: extras.telegramError || "",
     page: extras.page || "",
+    // Body secret for n8n webhooks that do not forward custom headers to the Code node.
+    secret,
   });
 
   const isHttps = persistUrl.protocol === "https:";
@@ -379,9 +396,20 @@ async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
     errorCode: telegram?.errorCode || null,
     telegramStatus: telegram?.telegramStatus || null,
     retry: true,
+    lead: {
+      id: lead.id,
+      name: lead.name,
+      contact: lead.contact,
+      intent: lead.intent,
+      source: lead.source,
+      message: lead.message || "",
+      contactChannel: lead.contactChannel,
+      createdAt: lead.createdAt,
+      privacyConsent: lead.privacyConsent === true,
+    },
   };
   try {
-    await fs.mkdir(path.dirname(TELEGRAM_FAILURES_FILE), { recursive: true });
+    await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
     await fs.appendFile(TELEGRAM_FAILURES_FILE, `${JSON.stringify(record)}\n`, "utf8");
     console.error("[leads] telegram delivery failure recorded", {
       leadId: record.leadId,
@@ -395,6 +423,148 @@ async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
     });
     return { ok: false };
   }
+}
+
+async function rewriteJsonl(filePath, keepLine) {
+  let raw = "";
+  try {
+    raw = await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return;
+    throw error;
+  }
+  const kept = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let row;
+    try {
+      row = JSON.parse(trimmed);
+    } catch {
+      kept.push(trimmed);
+      continue;
+    }
+    if (keepLine(row)) kept.push(JSON.stringify(row));
+  }
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, kept.length ? `${kept.join("\n")}\n` : "", "utf8");
+}
+
+async function drainTelegramRetryQueue() {
+  let raw = "";
+  try {
+    raw = await fs.readFile(TELEGRAM_FAILURES_FILE, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return { attempted: 0, delivered: 0 };
+    console.error("[leads] telegram queue read failed", { errorCode: networkErrorCode(error) });
+    return { attempted: 0, delivered: 0 };
+  }
+  const rows = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      rows.push(JSON.parse(trimmed));
+    } catch {
+      /* skip bad lines */
+    }
+  }
+  if (!rows.length) return { attempted: 0, delivered: 0 };
+
+  const deliveredIds = new Set();
+  let attempted = 0;
+  let delivered = 0;
+  for (const row of rows) {
+    if (!row?.retry || !row?.lead?.id) continue;
+    attempted += 1;
+    const result = await sendTelegram(row.lead);
+    if (result?.ok) {
+      delivered += 1;
+      deliveredIds.add(row.id || row.leadId || row.lead.id);
+      console.info("[leads] telegram retry delivered", { leadId: row.lead.id });
+    }
+  }
+  if (deliveredIds.size) {
+    await rewriteJsonl(TELEGRAM_FAILURES_FILE, (row) => {
+      const key = row.id || row.leadId || row.lead?.id;
+      return !deliveredIds.has(key);
+    });
+  }
+  return { attempted, delivered };
+}
+
+async function drainSheetRetryQueue() {
+  let raw = "";
+  try {
+    raw = await fs.readFile(SHEET_FAILURES_FILE, "utf8");
+  } catch (error) {
+    if (error && error.code === "ENOENT") return { attempted: 0, delivered: 0 };
+    console.error("[leads] sheet queue read failed", { errorCode: networkErrorCode(error) });
+    return { attempted: 0, delivered: 0 };
+  }
+  const rows = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      rows.push(JSON.parse(trimmed));
+    } catch {
+      /* skip */
+    }
+  }
+  // Sheet failures currently store metadata only; full lead is in LEADS_FILE — re-read by id.
+  let leadsRaw = "";
+  try {
+    leadsRaw = await fs.readFile(LEADS_FILE, "utf8");
+  } catch {
+    leadsRaw = "";
+  }
+  const leadsById = new Map();
+  for (const line of leadsRaw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const lead = JSON.parse(trimmed);
+      if (lead?.id) leadsById.set(lead.id, lead);
+    } catch {
+      /* skip */
+    }
+  }
+
+  let attempted = 0;
+  let delivered = 0;
+  const done = new Set();
+  for (const row of rows) {
+    const lead = row.lead || leadsById.get(row.id);
+    if (!lead?.id) continue;
+    attempted += 1;
+    const persist = await persistLeadDurable(lead, {});
+    if (persist.ok) {
+      delivered += 1;
+      done.add(row.id || lead.id);
+      console.info("[leads] sheet retry mirrored", { leadId: lead.id });
+    }
+  }
+  if (done.size) {
+    await rewriteJsonl(SHEET_FAILURES_FILE, (row) => !done.has(row.id));
+  }
+  return { attempted, delivered };
+}
+
+function startDeliveryRetryLoops() {
+  const tick = async () => {
+    try {
+      const tg = await drainTelegramRetryQueue();
+      const sheet = await drainSheetRetryQueue();
+      if (tg.attempted || sheet.attempted) {
+        console.info("[leads] retry drain", { telegram: tg, sheet });
+      }
+    } catch (error) {
+      console.error("[leads] retry drain failed", { errorCode: networkErrorCode(error) });
+    }
+  };
+  setTimeout(tick, 15000);
+  setInterval(tick, TELEGRAM_RETRY_MS);
 }
 
 function telegramRelayConfigured() {
@@ -820,6 +990,18 @@ async function sendTelegram(lead) {
   // One immediate retry for transient relay/network failures (all intents).
   const second = await sendTelegramMessage(formatLeadText(lead), relay);
   if (second?.ok) return { ...second, retried: true };
+  // Consultation ingress may reject the shared site secret — fall back to site-leads relay.
+  if (relay.route === "consultation_ingress") {
+    const fallback = { ...telegramRelayEnv(), route: "legacy_relay_fallback" };
+    const third = await sendTelegramMessage(formatLeadText(lead), fallback);
+    if (third?.ok) return { ...third, retried: true, fallback: true };
+    return {
+      ...first,
+      retried: true,
+      retryReason: third?.reason || second?.reason || null,
+      fallbackAttempted: true,
+    };
+  }
   return { ...first, retried: true, retryReason: second?.reason || null };
 }
 
@@ -1142,13 +1324,50 @@ async function handleLeads(req, res) {
     contactChannel: lead.contactChannel,
   });
 
-  // Primary registration: local jsonl on the app host (always attempted).
-  // Google Sheet via n8n is a non-blocking mirror — OAuth/sheet failures must not reject the lead.
+  // Durable store first (n8n → Google Sheet, secret required). Ephemeral cwd/data alone is not enough.
+  const persist = await persistLeadDurable(lead, {});
+  if (persist.ok) {
+    console.info("[leads] durable persist ok", { id: persist.id || lead.id });
+  } else {
+    console.error("[leads] durable persist failed", {
+      reason: persist.reason || null,
+      status: persist.status || null,
+      errorCode: persist.errorCode || null,
+    });
+    try {
+      await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
+      await fs.appendFile(
+        SHEET_FAILURES_FILE,
+        `${JSON.stringify({
+          id: lead.id,
+          at: new Date().toISOString(),
+          reason: persist.reason || "persist_failed",
+          intent: lead.intent,
+          source: lead.source,
+          lead: {
+            id: lead.id,
+            name: lead.name,
+            contact: lead.contact,
+            intent: lead.intent,
+            source: lead.source,
+            message: lead.message || "",
+            contactChannel: lead.contactChannel,
+            createdAt: lead.createdAt,
+            privacyConsent: lead.privacyConsent === true,
+          },
+        })}\n`,
+        "utf8",
+      );
+    } catch {
+      /* ignore queue write errors */
+    }
+  }
+
   const saved = await saveLead(lead);
   if (saved.ok) {
-    console.info("[leads] saved", { id: saved.id });
+    console.info("[leads] volume/local saved", { id: saved.id, volume: leadsVolumeConfigured() });
   } else {
-    console.error("[leads] save failed", { errorCode: saved.errorCode || saved.reason });
+    console.error("[leads] local save failed", { errorCode: saved.errorCode || saved.reason });
   }
 
   console.info("[leads] notify attempt");
@@ -1163,47 +1382,31 @@ async function handleLeads(req, res) {
     await recordTelegramDeliveryFailure(lead.id, lead, owner.telegram);
   }
 
-  const persist = await persistLeadDurable(lead, {
-    telegramError: telegramDelivered ? "" : owner.telegram?.reason || "telegram_unknown",
-  });
-  if (persist.ok) {
-    console.info("[leads] sheet mirror ok", { id: persist.id || lead.id });
-  } else {
-    console.error("[leads] sheet mirror failed", {
-      reason: persist.reason || null,
-      status: persist.status || null,
-      errorCode: persist.errorCode || null,
-    });
+  // Re-mirror with telegram error context (best-effort).
+  if (persist.ok && !telegramDelivered) {
+    void persistLeadDurable(lead, {
+      telegramError: owner.telegram?.reason || "telegram_unknown",
+    }).catch(() => {});
   }
 
-  // Accept the lead if local registration succeeded. Sheet/Telegram are best-effort mirrors/alerts.
-  if (saved.ok) {
-    sendJson(req, res, 200, {
-      ok: true,
+  const durableOk = Boolean(persist.ok);
+  if (!durableOk) {
+    sendJson(req, res, 502, {
+      ok: false,
+      stage: "persist_failed",
+      reason: persist.reason || "persist_failed",
       telegramDelivered,
-      sheetMirrored: Boolean(persist.ok),
-      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
-      ...(persist.ok ? {} : { sheetReason: persist.reason || "sheet_unavailable" }),
+      sheetMirrored: false,
     });
     return;
   }
 
-  // Local disk failed: still accept if sheet mirror succeeded (contact is not lost).
-  if (persist.ok) {
-    sendJson(req, res, 200, {
-      ok: true,
-      telegramDelivered,
-      sheetMirrored: true,
-      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
-    });
-    return;
-  }
-
-  sendJson(req, res, 502, {
-    ok: false,
-    stage: "save_failed",
+  sendJson(req, res, 200, {
+    ok: true,
     telegramDelivered,
-    sheetMirrored: false,
+    sheetMirrored: true,
+    volumeSaved: Boolean(saved.ok),
+    ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
   });
 }
 
@@ -1424,4 +1627,9 @@ server.listen(PORT, HOST, () => {
   console.info("[telegram] relay " + (telegramRelayConfigured() ? "configured" : "not configured"));
   console.info("[max] " + (maxConfigured() ? "configured" : "not configured"));
   console.info("[email] " + (emailConfigured() ? "configured" : "not configured"));
+  console.info("[leads] dataDir=" + LEADS_DATA_DIR + " volume=" + String(leadsVolumeConfigured()));
+  console.info(
+    "[leads] persistSecret=" + (leadsPersistConfig().secret ? "set" : "MISSING"),
+  );
+  startDeliveryRetryLoops();
 });

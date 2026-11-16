@@ -1,9 +1,17 @@
 export const CONSULTATION_RELAY_URL_DEFAULT =
   "https://ksenia-ahmedova-leads-ingress.marygold60588.workers.dev";
 
+/** Worker that accepts the current site relay secret and delivers owner Telegram alerts. */
+export const SITE_LEADS_RELAY_URL_DEFAULT =
+  "https://ksenia-site-leads-relay.marygold60588.workers.dev";
+
 export function telegramRelayEnv(env = process.env) {
-  const url = typeof env.TELEGRAM_RELAY_URL === "string" ? env.TELEGRAM_RELAY_URL.trim() : "";
+  let url = typeof env.TELEGRAM_RELAY_URL === "string" ? env.TELEGRAM_RELAY_URL.trim() : "";
   const secret = typeof env.TELEGRAM_RELAY_SECRET === "string" ? env.TELEGRAM_RELAY_SECRET.trim() : "";
+  // Old workers reject the current shared secret (401) and surface as telegram_rejected.
+  if (!url || /ksenia-telegram-relay\.|ksenia-ahmedova-leads-ingress\./i.test(url)) {
+    url = SITE_LEADS_RELAY_URL_DEFAULT;
+  }
   return { url, secret };
 }
 
