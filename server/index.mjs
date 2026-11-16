@@ -15,7 +15,7 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-durable-relay-secret";
+const BUILD_ID = "leads-durable-relay-secret-2";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -1585,12 +1585,18 @@ const server = http.createServer(async (req, res) => {
         sendJson(req, res, 405, { ok: false });
         return;
       }
-      sendJson(req, res, 200, {
-        ok: true,
-        build: BUILD_ID,
-        intents: Object.keys(INTENTS),
-        telegramRelayConfigured: telegramRelayConfigured(),
-      });
+      {
+        const persist = leadsPersistConfig();
+        sendJson(req, res, 200, {
+          ok: true,
+          build: BUILD_ID,
+          intents: Object.keys(INTENTS),
+          telegramRelayConfigured: telegramRelayConfigured(),
+          leadsPersistUrl: Boolean(persist.url),
+          leadsPersistSecret: Boolean(persist.secret),
+          leadsDataDir: leadsVolumeConfigured(),
+        });
+      }
       return;
     }
 
