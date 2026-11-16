@@ -15,7 +15,7 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-durable-relay-secret-3";
+const BUILD_ID = "leads-durable-n8n-tg-1";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -1404,12 +1404,7 @@ async function handleLeads(req, res) {
     await recordTelegramDeliveryFailure(lead.id, lead, owner.telegram);
   }
 
-  // Re-mirror with telegram error context (best-effort).
-  if (persist.ok && !telegramDelivered) {
-    void persistLeadDurable(lead, {
-      telegramError: owner.telegram?.reason || "telegram_unknown",
-    }).catch(() => {});
-  }
+  // Do not re-append to Sheet on telegram failure — duplicates rows. TG retry is local queue + n8n notify.
 
   const durableOk = Boolean(persist.ok);
   if (!durableOk) {
