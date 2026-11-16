@@ -168,6 +168,7 @@ export default function KogdaGovoryatNetPage() {
       intent: "gift",
       message: "Лид-магнит «Когда мне говорят нет»",
       source: "site-form",
+      privacyConsent: true,
     });
     setSending(false);
     if (!result.ok) {

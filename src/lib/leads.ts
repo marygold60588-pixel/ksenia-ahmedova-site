@@ -9,6 +9,7 @@ export type LeadPayload = {
   contactChannel?: ContactChannel;
   message?: string;
   source: "site-form" | "paper-card" | "agent" | "practice-self-refusal";
+  privacyConsent: true;
   createdAt: string;
 };
 
@@ -75,10 +76,14 @@ const localAdapter = new LocalLeadAdapter();
 const apiAdapter = new ApiLeadAdapter();
 
 export async function submitLead(
-  input: Omit<LeadPayload, "createdAt">,
+  input: Omit<LeadPayload, "createdAt" | "privacyConsent"> & { privacyConsent?: boolean },
 ): Promise<LeadResult> {
+  if (input.privacyConsent !== true) {
+    return { ok: false };
+  }
   const lead: LeadPayload = {
     ...input,
+    privacyConsent: true,
     createdAt: new Date().toISOString(),
   };
 

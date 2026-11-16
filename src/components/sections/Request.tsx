@@ -37,6 +37,7 @@ export default function Request() {
       contactChannel: channel,
       message: message.trim() || undefined,
       source: "site-form",
+      privacyConsent: true,
     });
     setSending(false);
     if (!result.ok) {

@@ -15,10 +15,13 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "personal-review-relay-diag";
+const BUILD_ID = "leads-persist-sheets-n8n";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
+const LEADS_PERSIST_TIMEOUT_MS = 20000;
+const LEADS_PERSIST_WEBHOOK_URL_DEFAULT =
+  "https://n8n.vsellm.info/webhook/ksenia-site-leads-6d9a1ff66528";
 
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT) || 3000;
@@ -42,6 +45,16 @@ const SOURCES = new Set(["site-form", "paper-card", "agent", "practice-self-refu
 const CHANNELS = new Set(["telegram", "max", "email"]);
 const LEADS_FILE = path.resolve(process.cwd(), "data", "leads.jsonl");
 const TELEGRAM_FAILURES_FILE = path.resolve(process.cwd(), "data", "lead-telegram-failures.jsonl");
+
+function leadsPersistConfig() {
+  const url =
+    typeof process.env.LEADS_PERSIST_WEBHOOK_URL === "string" && process.env.LEADS_PERSIST_WEBHOOK_URL.trim()
+      ? process.env.LEADS_PERSIST_WEBHOOK_URL.trim()
+      : LEADS_PERSIST_WEBHOOK_URL_DEFAULT;
+  const secret =
+    typeof process.env.LEADS_PERSIST_SECRET === "string" ? process.env.LEADS_PERSIST_SECRET.trim() : "";
+  return { url, secret };
+}
 
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -221,6 +234,9 @@ function parseLead(raw) {
   if (intent === "personal_review" && resolvedChannel === "не указан") {
     return { lead: null, reason: "contact_channel" };
   }
+  if (data.privacyConsent !== true) {
+    return { lead: null, reason: "privacy_consent" };
+  }
 
   return {
     lead: {
@@ -231,6 +247,7 @@ function parseLead(raw) {
       source,
       contactChannel: resolvedChannel,
       createdAt,
+      privacyConsent: true,
     },
     reason: null,
   };
@@ -249,7 +266,7 @@ function looksLikeTelegramContact(value) {
 
 async function saveLead(lead) {
   const record = {
-    id: crypto.randomUUID(),
+    id: lead.id || crypto.randomUUID(),
     name: lead.name,
     contact: lead.contact,
     message: lead.message,
@@ -257,6 +274,7 @@ async function saveLead(lead) {
     intent: lead.intent,
     source: lead.source,
     createdAt: lead.createdAt || new Date().toISOString(),
+    privacyConsent: lead.privacyConsent === true,
   };
 
   try {
@@ -266,6 +284,88 @@ async function saveLead(lead) {
   } catch (error) {
     return { ok: false, reason: "save_failed", errorCode: networkErrorCode(error) };
   }
+}
+
+async function persistLeadDurable(lead, extras = {}) {
+  const { url: urlRaw, secret } = leadsPersistConfig();
+  if (!urlRaw) {
+    return { ok: false, reason: "persist_not_configured" };
+  }
+  let persistUrl;
+  try {
+    persistUrl = new URL(urlRaw);
+  } catch {
+    return { ok: false, reason: "persist_invalid_url" };
+  }
+
+  const payload = JSON.stringify({
+    id: lead.id,
+    name: lead.name,
+    contact: lead.contact,
+    intent: lead.intent,
+    source: lead.source,
+    message: lead.message || "",
+    contactChannel: lead.contactChannel,
+    createdAt: lead.createdAt,
+    privacyConsent: lead.privacyConsent === true,
+    consentFlag: lead.privacyConsent === true ? "true" : "false",
+    telegramError: extras.telegramError || "",
+    page: extras.page || "",
+  });
+
+  const isHttps = persistUrl.protocol === "https:";
+  const requestPath = `${persistUrl.pathname || "/"}${persistUrl.search}`;
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "Content-Length": Buffer.byteLength(payload),
+  };
+  if (secret) headers["X-Leads-Secret"] = secret;
+
+  return new Promise((resolve) => {
+    const request = (isHttps ? https : http).request(
+      {
+        hostname: persistUrl.hostname,
+        port: persistUrl.port || (isHttps ? 443 : 80),
+        path: requestPath,
+        method: "POST",
+        family: 4,
+        headers,
+      },
+      (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf8");
+          let json = null;
+          try {
+            json = JSON.parse(raw);
+          } catch {
+            json = null;
+          }
+          const status = response.statusCode || 0;
+          // Treat HTTP 2xx as mirror success even if the webhook body is empty.
+          if (status >= 200 && status < 300 && (!json || json.ok === true || json.ok === undefined)) {
+            resolve({ ok: true, status, id: (json && json.id) || lead.id });
+            return;
+          }
+          resolve({ ok: false, reason: "persist_rejected", status });
+        });
+      },
+    );
+    request.setTimeout(LEADS_PERSIST_TIMEOUT_MS, () => {
+      request.destroy(timeoutError("Lead persist timeout"));
+    });
+    request.on("error", (error) => {
+      resolve({
+        ok: false,
+        reason: "persist_network",
+        errorCode: networkErrorCode(error),
+      });
+    });
+    request.write(payload);
+    request.end();
+  });
 }
 
 async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
@@ -714,7 +814,13 @@ async function sendTelegramMessage(text, relay = null) {
 }
 
 async function sendTelegram(lead) {
-  return sendTelegramMessage(formatLeadText(lead), resolveTelegramRelay(lead));
+  const relay = resolveTelegramRelay(lead);
+  const first = await sendTelegramMessage(formatLeadText(lead), relay);
+  if (first?.ok) return first;
+  // One immediate retry for transient relay/network failures (all intents).
+  const second = await sendTelegramMessage(formatLeadText(lead), relay);
+  if (second?.ok) return { ...second, retried: true };
+  return { ...first, retried: true, retryReason: second?.reason || null };
 }
 
 function unwrapSettled(result, fallback) {
@@ -1026,13 +1132,18 @@ async function handleLeads(req, res) {
     return;
   }
 
-  const lead = parsed.lead;
+  const lead = {
+    ...parsed.lead,
+    id: crypto.randomUUID(),
+  };
   console.info("[leads] validation ok", {
     source: lead.source,
     intent: lead.intent,
     contactChannel: lead.contactChannel,
   });
 
+  // Primary registration: local jsonl on the app host (always attempted).
+  // Google Sheet via n8n is a non-blocking mirror — OAuth/sheet failures must not reject the lead.
   const saved = await saveLead(lead);
   if (saved.ok) {
     console.info("[leads] saved", { id: saved.id });
@@ -1047,58 +1158,52 @@ async function handleLeads(req, res) {
   logEmailResult(owner.email, "owner");
   logEmailResult(visitor, "visitor");
 
-  // Personal review: keep the lead even if Telegram fails, and queue retry explicitly.
-  if (saved.ok && lead.intent === "personal_review" && !owner.telegram?.ok) {
-    await recordTelegramDeliveryFailure(saved.id, lead, owner.telegram);
+  const telegramDelivered = Boolean(owner.telegram?.ok);
+  if (!telegramDelivered) {
+    await recordTelegramDeliveryFailure(lead.id, lead, owner.telegram);
   }
 
-  // Client success requires registration. Notification failure alone is not enough.
+  const persist = await persistLeadDurable(lead, {
+    telegramError: telegramDelivered ? "" : owner.telegram?.reason || "telegram_unknown",
+  });
+  if (persist.ok) {
+    console.info("[leads] sheet mirror ok", { id: persist.id || lead.id });
+  } else {
+    console.error("[leads] sheet mirror failed", {
+      reason: persist.reason || null,
+      status: persist.status || null,
+      errorCode: persist.errorCode || null,
+    });
+  }
+
+  // Accept the lead if local registration succeeded. Sheet/Telegram are best-effort mirrors/alerts.
   if (saved.ok) {
-    const telegramDelivered = Boolean(owner.telegram?.ok);
     sendJson(req, res, 200, {
       ok: true,
       telegramDelivered,
-      // Safe reason only — no secrets, URLs, or payload contents.
-      ...(telegramDelivered
-        ? {}
-        : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+      sheetMirrored: Boolean(persist.ok),
+      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+      ...(persist.ok ? {} : { sheetReason: persist.reason || "sheet_unavailable" }),
     });
     return;
   }
 
-  if (ownerNotificationOk(owner)) {
-    sendJson(req, res, 200, { ok: true, telegramDelivered: Boolean(owner.telegram?.ok) });
-    return;
-  }
-
-  if (owner.max.reason === "not_configured" && owner.email.reason === "not_configured") {
-    sendTelegramFailure(req, res, owner.telegram);
-    return;
-  }
-  if (owner.telegram.reason === "not_configured" && owner.email.reason === "not_configured") {
-    sendMaxFailure(req, res, owner.max);
-    return;
-  }
-  if (owner.telegram.reason === "not_configured" && owner.max.reason === "not_configured") {
-    sendEmailFailure(req, res, owner.email);
+  // Local disk failed: still accept if sheet mirror succeeded (contact is not lost).
+  if (persist.ok) {
+    sendJson(req, res, 200, {
+      ok: true,
+      telegramDelivered,
+      sheetMirrored: true,
+      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+    });
     return;
   }
 
   sendJson(req, res, 502, {
     ok: false,
-    stage: "notification_failed",
-    telegram: {
-      reason: owner.telegram.reason || null,
-      errorCode: owner.telegram.errorCode || null,
-    },
-    max: {
-      reason: owner.max.reason || null,
-      errorCode: owner.max.errorCode || null,
-    },
-    email: {
-      reason: owner.email.reason || null,
-      errorCode: owner.email.errorCode || null,
-    },
+    stage: "save_failed",
+    telegramDelivered,
+    sheetMirrored: false,
   });
 }
 

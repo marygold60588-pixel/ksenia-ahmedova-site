@@ -33,6 +33,7 @@ export default function PaperCard() {
       intent: "gift",
       contactChannel: channel,
       source: "paper-card",
+      privacyConsent: true,
     });
     setSending(false);
     if (!result.ok) {

@@ -211,6 +211,7 @@ export default function InteractivePracticePage() {
       intent: "personal_review",
       contactChannel: looksLikeEmail(contact) ? "email" : "telegram",
       source: "practice-self-refusal",
+      privacyConsent: true,
       // Psychological answers are intentionally omitted.
     });
     setReviewSending(false);
