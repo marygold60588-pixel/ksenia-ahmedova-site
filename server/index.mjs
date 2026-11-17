@@ -15,7 +15,7 @@ import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.m
 import { applyRouteSeo } from "./page-seo.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-durable-n8n-tg-1";
+const BUILD_ID = "leads-volume-primary-1";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -1346,50 +1346,53 @@ async function handleLeads(req, res) {
     contactChannel: lead.contactChannel,
   });
 
-  // Durable store first (n8n → Google Sheet, secret required). Ephemeral cwd/data alone is not enough.
+  // Primary durable store: RF volume (LEADS_DATA_DIR). Google Sheet is a non-blocking mirror.
+  const volumeReady = leadsVolumeConfigured();
+  const saved = await saveLead(lead);
+  if (saved.ok) {
+    console.info("[leads] volume/local saved", { id: saved.id, volume: volumeReady });
+  } else {
+    console.error("[leads] local save failed", { errorCode: saved.errorCode || saved.reason });
+  }
+
   const persist = await persistLeadDurable(lead, {});
   if (persist.ok) {
-    console.info("[leads] durable persist ok", { id: persist.id || lead.id });
+    console.info("[leads] sheet mirror ok", { id: persist.id || lead.id });
   } else {
-    console.error("[leads] durable persist failed", {
+    console.error("[leads] sheet mirror failed", {
       reason: persist.reason || null,
       status: persist.status || null,
       errorCode: persist.errorCode || null,
     });
-    try {
-      await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
-      await fs.appendFile(
-        SHEET_FAILURES_FILE,
-        `${JSON.stringify({
-          id: lead.id,
-          at: new Date().toISOString(),
-          reason: persist.reason || "persist_failed",
-          intent: lead.intent,
-          source: lead.source,
-          lead: {
+    if (saved.ok) {
+      try {
+        await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
+        await fs.appendFile(
+          SHEET_FAILURES_FILE,
+          `${JSON.stringify({
             id: lead.id,
-            name: lead.name,
-            contact: lead.contact,
+            at: new Date().toISOString(),
+            reason: persist.reason || "persist_failed",
             intent: lead.intent,
             source: lead.source,
-            message: lead.message || "",
-            contactChannel: lead.contactChannel,
-            createdAt: lead.createdAt,
-            privacyConsent: lead.privacyConsent === true,
-          },
-        })}\n`,
-        "utf8",
-      );
-    } catch {
-      /* ignore queue write errors */
+            lead: {
+              id: lead.id,
+              name: lead.name,
+              contact: lead.contact,
+              intent: lead.intent,
+              source: lead.source,
+              message: lead.message || "",
+              contactChannel: lead.contactChannel,
+              createdAt: lead.createdAt,
+              privacyConsent: lead.privacyConsent === true,
+            },
+          })}\n`,
+          "utf8",
+        );
+      } catch {
+        /* ignore queue write errors */
+      }
     }
-  }
-
-  const saved = await saveLead(lead);
-  if (saved.ok) {
-    console.info("[leads] volume/local saved", { id: saved.id, volume: leadsVolumeConfigured() });
-  } else {
-    console.error("[leads] local save failed", { errorCode: saved.errorCode || saved.reason });
   }
 
   console.info("[leads] notify attempt");
@@ -1404,26 +1407,42 @@ async function handleLeads(req, res) {
     await recordTelegramDeliveryFailure(lead.id, lead, owner.telegram);
   }
 
-  // Do not re-append to Sheet on telegram failure — duplicates rows. TG retry is local queue + n8n notify.
-
-  const durableOk = Boolean(persist.ok);
-  if (!durableOk) {
-    sendJson(req, res, 502, {
-      ok: false,
-      stage: "persist_failed",
-      reason: persist.reason || "persist_failed",
+  // Accept only when RF volume write succeeded. Sheet alone is not primary storage.
+  if (volumeReady && saved.ok) {
+    sendJson(req, res, 200, {
+      ok: true,
       telegramDelivered,
-      sheetMirrored: false,
+      sheetMirrored: Boolean(persist.ok),
+      volumeSaved: true,
+      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+      ...(persist.ok ? {} : { sheetReason: persist.reason || "sheet_unavailable" }),
     });
     return;
   }
 
-  sendJson(req, res, 200, {
-    ok: true,
+  // Transition: volume not mounted yet — keep accepting via sheet mirror so leads are not lost,
+  // but signal that RF primary is missing.
+  if (!volumeReady && persist.ok) {
+    sendJson(req, res, 200, {
+      ok: true,
+      telegramDelivered,
+      sheetMirrored: true,
+      volumeSaved: Boolean(saved.ok),
+      volumeRequired: true,
+      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+    });
+    return;
+  }
+
+  sendJson(req, res, 502, {
+    ok: false,
+    stage: volumeReady ? "volume_save_failed" : "persist_failed",
+    reason: volumeReady
+      ? saved.errorCode || saved.reason || "volume_save_failed"
+      : persist.reason || "persist_failed",
     telegramDelivered,
-    sheetMirrored: true,
+    sheetMirrored: Boolean(persist.ok),
     volumeSaved: Boolean(saved.ok),
-    ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
   });
 }
 
