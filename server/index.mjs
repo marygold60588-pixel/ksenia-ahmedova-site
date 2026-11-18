@@ -13,9 +13,19 @@ import { emailConfigured, looksLikeEmail, sendOwnerEmail, sendVisitorEmail } fro
 import { formatLeadText } from "./lead-text.mjs";
 import { resolveTelegramRelay, telegramRelayEnv } from "./telegram-relay-route.mjs";
 import { applyRouteSeo } from "./page-seo.mjs";
+import {
+  s3Configured,
+  putLeadIdempotent,
+  putQueueItem,
+  deleteObject,
+  listKeys,
+  getJson,
+  sheetAlreadyMirrored,
+  putSheetDedupeMarker,
+} from "./leads-s3-store.mjs";
 
 dns.setDefaultResultOrder("ipv4first");
-const BUILD_ID = "leads-volume-primary-1";
+const BUILD_ID = "leads-s3-primary-1";
 const TELEGRAM_HOST = "api.telegram.org";
 const TELEGRAM_PORT = 443;
 const TELEGRAM_TIMEOUT_MS = 15000;
@@ -88,6 +98,10 @@ function leadsEnvKeyNames() {
 
 function leadsVolumeConfigured() {
   return typeof process.env.LEADS_DATA_DIR === "string" && process.env.LEADS_DATA_DIR.trim().length > 0;
+}
+
+function leadsPrimaryReady() {
+  return s3Configured() || leadsVolumeConfigured();
 }
 
 const CONTENT_TYPES = {
@@ -430,6 +444,21 @@ async function recordTelegramDeliveryFailure(leadId, lead, telegram) {
       privacyConsent: lead.privacyConsent === true,
     },
   };
+  if (s3Configured() && lead?.id) {
+    try {
+      const queued = await putQueueItem("telegram", lead.id, record);
+      if (queued.ok) {
+        console.error("[leads] telegram failure queued s3", {
+          leadId: record.leadId,
+          reason: record.reason,
+          errorCode: record.errorCode,
+        });
+        return { ok: true };
+      }
+    } catch (error) {
+      console.error("[leads] telegram s3 queue failed", { errorCode: networkErrorCode(error) });
+    }
+  }
   try {
     await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
     await fs.appendFile(TELEGRAM_FAILURES_FILE, `${JSON.stringify(record)}\n`, "utf8");
@@ -473,6 +502,24 @@ async function rewriteJsonl(filePath, keepLine) {
 }
 
 async function drainTelegramRetryQueue() {
+  if (s3Configured()) {
+    const listed = await listKeys("queue/telegram/");
+    let attempted = 0;
+    let delivered = 0;
+    for (const key of listed.keys || []) {
+      const item = await getJson(key);
+      const lead = item.json?.lead;
+      if (!lead?.id) continue;
+      attempted += 1;
+      const result = await sendTelegram(lead);
+      if (result?.ok) {
+        delivered += 1;
+        await deleteObject(key);
+        console.info("[leads] telegram retry delivered s3", { leadId: lead.id });
+      }
+    }
+    return { attempted, delivered };
+  }
   let raw = "";
   try {
     raw = await fs.readFile(TELEGRAM_FAILURES_FILE, "utf8");
@@ -516,6 +563,30 @@ async function drainTelegramRetryQueue() {
 }
 
 async function drainSheetRetryQueue() {
+  if (s3Configured()) {
+    const listed = await listKeys("queue/sheet/");
+    let attempted = 0;
+    let delivered = 0;
+    for (const key of listed.keys || []) {
+      const item = await getJson(key);
+      const lead = item.json?.lead || item.json;
+      if (!lead?.id) continue;
+      if (await sheetAlreadyMirrored(lead.id)) {
+        await deleteObject(key);
+        delivered += 1;
+        continue;
+      }
+      attempted += 1;
+      const persist = await persistLeadDurable(lead, {});
+      if (persist.ok) {
+        await putSheetDedupeMarker(lead.id);
+        await deleteObject(key);
+        delivered += 1;
+        console.info("[leads] sheet retry mirrored s3", { leadId: lead.id });
+      }
+    }
+    return { attempted, delivered };
+  }
   let raw = "";
   try {
     raw = await fs.readFile(SHEET_FAILURES_FILE, "utf8");
@@ -1346,51 +1417,77 @@ async function handleLeads(req, res) {
     contactChannel: lead.contactChannel,
   });
 
-  // Primary durable store: RF volume (LEADS_DATA_DIR). Google Sheet is a non-blocking mirror.
+  // Primary durable store: Timeweb S3 (if configured), else RF volume. Sheet is non-blocking mirror.
+  const s3Ready = s3Configured();
   const volumeReady = leadsVolumeConfigured();
-  const saved = await saveLead(lead);
-  if (saved.ok) {
-    console.info("[leads] volume/local saved", { id: saved.id, volume: volumeReady });
+  let saved = { ok: false, reason: "not_attempted" };
+  if (s3Ready) {
+    saved = await putLeadIdempotent(lead);
+    if (saved.ok) {
+      console.info("[leads] s3 saved", { id: lead.id, created: Boolean(saved.created), existed: Boolean(saved.existed) });
+    } else {
+      console.error("[leads] s3 save failed", { reason: saved.reason || null, status: saved.status || null });
+    }
   } else {
-    console.error("[leads] local save failed", { errorCode: saved.errorCode || saved.reason });
+    saved = await saveLead(lead);
+    if (saved.ok) {
+      console.info("[leads] volume/local saved", { id: saved.id, volume: volumeReady });
+    } else {
+      console.error("[leads] local save failed", { errorCode: saved.errorCode || saved.reason });
+    }
   }
 
-  const persist = await persistLeadDurable(lead, {});
-  if (persist.ok) {
-    console.info("[leads] sheet mirror ok", { id: persist.id || lead.id });
+  let persist = { ok: false, reason: "not_attempted" };
+  if (s3Ready && (await sheetAlreadyMirrored(lead.id))) {
+    persist = { ok: true, id: lead.id, deduped: true };
+    console.info("[leads] sheet mirror skipped dedupe", { id: lead.id });
   } else {
-    console.error("[leads] sheet mirror failed", {
-      reason: persist.reason || null,
-      status: persist.status || null,
-      errorCode: persist.errorCode || null,
-    });
-    if (saved.ok) {
-      try {
-        await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
-        await fs.appendFile(
-          SHEET_FAILURES_FILE,
-          `${JSON.stringify({
-            id: lead.id,
-            at: new Date().toISOString(),
-            reason: persist.reason || "persist_failed",
-            intent: lead.intent,
-            source: lead.source,
-            lead: {
+    persist = await persistLeadDurable(lead, {});
+    if (persist.ok) {
+      console.info("[leads] sheet mirror ok", { id: persist.id || lead.id });
+      if (s3Ready) await putSheetDedupeMarker(lead.id);
+    } else {
+      console.error("[leads] sheet mirror failed", {
+        reason: persist.reason || null,
+        status: persist.status || null,
+        errorCode: persist.errorCode || null,
+      });
+      if (saved.ok) {
+        try {
+          if (s3Ready) {
+            await putQueueItem("sheet", lead.id, {
               id: lead.id,
-              name: lead.name,
-              contact: lead.contact,
-              intent: lead.intent,
-              source: lead.source,
-              message: lead.message || "",
-              contactChannel: lead.contactChannel,
-              createdAt: lead.createdAt,
-              privacyConsent: lead.privacyConsent === true,
-            },
-          })}\n`,
-          "utf8",
-        );
-      } catch {
-        /* ignore queue write errors */
+              reason: persist.reason || "persist_failed",
+              lead,
+            });
+          } else {
+            await fs.mkdir(LEADS_DATA_DIR, { recursive: true });
+            await fs.appendFile(
+              SHEET_FAILURES_FILE,
+              `${JSON.stringify({
+                id: lead.id,
+                at: new Date().toISOString(),
+                reason: persist.reason || "persist_failed",
+                intent: lead.intent,
+                source: lead.source,
+                lead: {
+                  id: lead.id,
+                  name: lead.name,
+                  contact: lead.contact,
+                  intent: lead.intent,
+                  source: lead.source,
+                  message: lead.message || "",
+                  contactChannel: lead.contactChannel,
+                  createdAt: lead.createdAt,
+                  privacyConsent: lead.privacyConsent === true,
+                },
+              })}\n`,
+              "utf8",
+            );
+          }
+        } catch {
+          /* ignore queue write errors */
+        }
       }
     }
   }
@@ -1407,12 +1504,26 @@ async function handleLeads(req, res) {
     await recordTelegramDeliveryFailure(lead.id, lead, owner.telegram);
   }
 
-  // Accept only when RF volume write succeeded. Sheet alone is not primary storage.
-  if (volumeReady && saved.ok) {
+  // Accept when S3 primary write succeeded (preferred), else RF volume, else sheet transition.
+  if (s3Ready && saved.ok) {
     sendJson(req, res, 200, {
       ok: true,
       telegramDelivered,
       sheetMirrored: Boolean(persist.ok),
+      s3Saved: true,
+      volumeSaved: false,
+      ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
+      ...(persist.ok ? {} : { sheetReason: persist.reason || "sheet_unavailable" }),
+    });
+    return;
+  }
+
+  if (!s3Ready && volumeReady && saved.ok) {
+    sendJson(req, res, 200, {
+      ok: true,
+      telegramDelivered,
+      sheetMirrored: Boolean(persist.ok),
+      s3Saved: false,
       volumeSaved: true,
       ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
       ...(persist.ok ? {} : { sheetReason: persist.reason || "sheet_unavailable" }),
@@ -1420,15 +1531,15 @@ async function handleLeads(req, res) {
     return;
   }
 
-  // Transition: volume not mounted yet — keep accepting via sheet mirror so leads are not lost,
-  // but signal that RF primary is missing.
-  if (!volumeReady && persist.ok) {
+  // Transition: neither S3 nor volume — keep accepting via sheet mirror so leads are not lost.
+  if (!s3Ready && !volumeReady && persist.ok) {
     sendJson(req, res, 200, {
       ok: true,
       telegramDelivered,
       sheetMirrored: true,
+      s3Saved: false,
       volumeSaved: Boolean(saved.ok),
-      volumeRequired: true,
+      durableRequired: true,
       ...(telegramDelivered ? {} : { telegramReason: owner.telegram?.reason || "telegram_unknown" }),
     });
     return;
@@ -1436,13 +1547,16 @@ async function handleLeads(req, res) {
 
   sendJson(req, res, 502, {
     ok: false,
-    stage: volumeReady ? "volume_save_failed" : "persist_failed",
-    reason: volumeReady
-      ? saved.errorCode || saved.reason || "volume_save_failed"
-      : persist.reason || "persist_failed",
+    stage: s3Ready ? "s3_save_failed" : volumeReady ? "volume_save_failed" : "persist_failed",
+    reason: s3Ready
+      ? saved.reason || "s3_save_failed"
+      : volumeReady
+        ? saved.errorCode || saved.reason || "volume_save_failed"
+        : persist.reason || "persist_failed",
     telegramDelivered,
     sheetMirrored: Boolean(persist.ok),
-    volumeSaved: Boolean(saved.ok),
+    s3Saved: Boolean(s3Ready && saved.ok),
+    volumeSaved: Boolean(!s3Ready && saved.ok),
   });
 }
 
@@ -1634,6 +1748,8 @@ const server = http.createServer(async (req, res) => {
           leadsPersistSecretEnvLen: typeof rawSecret === "string" ? rawSecret.trim().length : 0,
           leadsEnvKeys: leadsEnvKeyNames(),
           leadsDataDir: leadsVolumeConfigured(),
+          s3Configured: s3Configured(),
+          leadsPrimary: s3Configured() ? "s3" : leadsVolumeConfigured() ? "volume" : "none",
         });
       }
       return;
@@ -1673,6 +1789,7 @@ server.listen(PORT, HOST, () => {
   console.info("[max] " + (maxConfigured() ? "configured" : "not configured"));
   console.info("[email] " + (emailConfigured() ? "configured" : "not configured"));
   console.info("[leads] dataDir=" + LEADS_DATA_DIR + " volume=" + String(leadsVolumeConfigured()));
+  console.info("[leads] s3=" + String(s3Configured()) + " primary=" + (s3Configured() ? "s3" : leadsVolumeConfigured() ? "volume" : "none"));
   console.info(
     "[leads] persistSecret=" + (leadsPersistConfig().secret ? "set" : "MISSING"),
   );
