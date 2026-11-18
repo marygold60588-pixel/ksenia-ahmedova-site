@@ -123,6 +123,39 @@ const PAGE_SEO = {
       },
     },
   },
+  "/pochemu-ya-uchityvayu-chuzhie-zhelaniya": {
+    title: "Почему я учитываю чужие желания, а мои не замечают | Ксения Ахмедова",
+    description:
+      "Почему мы уступаем близким, отказываемся от собственных желаний, а затем испытываем обиду и раздражение. Психоаналитический взгляд на отношения.",
+    canonical: "https://ksenia-ahmedova.ru/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
+    ogType: "article",
+    ogImage: "https://ksenia-ahmedova.ru/media/portraits/zadumchivaya-passazhirka.jpg",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "Почему я всегда учитываю чужие желания, а мои никто не замечает?",
+      description:
+        "Почему мы уступаем близким, отказываемся от собственных желаний, а затем испытываем обиду и раздражение. Психоаналитический взгляд на отношения.",
+      inLanguage: "ru",
+      datePublished: "2026-11-18",
+      dateModified: "2026-11-18",
+      mainEntityOfPage: "https://ksenia-ahmedova.ru/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
+      url: "https://ksenia-ahmedova.ru/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
+      image: "https://ksenia-ahmedova.ru/media/portraits/zadumchivaya-passazhirka.jpg",
+      author: {
+        "@type": "Person",
+        "@id": "https://ksenia-ahmedova.ru/#person",
+        name: "Ксения Ахмедова",
+        jobTitle: "врач-психотерапевт, психоаналитик",
+        url: "https://ksenia-ahmedova.ru/",
+      },
+      publisher: {
+        "@id": "https://ksenia-ahmedova.ru/#person",
+      },
+      keywords:
+        "почему я отказываюсь от своих желаний, почему я постоянно уступаю близким, страх чужого недовольства, подавление собственных желаний, обида в отношениях",
+    },
+  },
   "/kogda-govoryat-net": {
     title: "Когда мне говорят «нет»: карта реакции на отказ",
     description:

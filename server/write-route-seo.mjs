@@ -8,6 +8,7 @@ const ROUTES = [
   "/boyus-prosit",
   "/strah-otkaza-i-ugozhdenie",
   "/posle-otkaza-hochu-ischeznut",
+  "/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
   "/kogda-govoryat-net",
   "/praktika-ne-otkazyvatsya-ot-sebya",
 ];

@@ -6,6 +6,15 @@ import { usePageMeta } from "@/lib/page-meta";
 const articlesMeta = { title: "Статьи о психологии отношений — Ксения Ахмедова", description: "Психоаналитические статьи о страхе отказа, отвержении, просьбах и границах.", canonical: "https://ksenia-ahmedova.ru/articles", ogType: "website" };
 
 const articles = [
+  {
+    href: "/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
+    title: "Почему я всегда учитываю чужие желания, а мои никто не замечает?",
+    description:
+      "Почему мы уступаем близким, отказываемся от собственных желаний, а затем испытываем обиду и раздражение.",
+    image: "/media/portraits/zadumchivaya-passazhirka.jpg",
+    imageAlt:
+      "Элегантная женщина испытывает недовольство в отношениях, несмотря на внешнее благополучие.",
+  },
   { href: "/strah-otverzheniya", title: "Страх отвержения: почему отказ ощущается как «меня нет»", description: "Когда чужое «нет» переживается как угроза собственной ценности." },
   { href: "/boyus-prosit", title: "Почему я боюсь просить", description: "Почему простая просьба может ощущаться как опасность и что стоит за этим страхом." },
   { href: "/strah-otkaza-i-ugozhdenie", title: "Почему я соглашаюсь, хотя не хочу", description: "О привычке говорить «да» раньше, чем удаётся услышать собственное желание." },
@@ -33,6 +42,15 @@ export default function ArticlesPage() {
           <div style={{ display: "grid", gap: "1.25rem" }}>
             {articles.map((article) => (
               <a key={article.href} href={article.href} style={{ display: "block", padding: "2rem", border: "1px solid rgba(145,122,90,.28)", borderRadius: 18, color: "inherit", textDecoration: "none", background: "rgba(255,255,255,.06)" }}>
+                {"image" in article && article.image ? (
+                  <img
+                    src={article.image}
+                    alt={article.imageAlt}
+                    width={1400}
+                    height={991}
+                    style={{ display: "block", width: "100%", height: "auto", borderRadius: 12, marginBottom: "1.1rem" }}
+                  />
+                ) : null}
                 <span style={{ display: "block", fontSize: ".8rem", letterSpacing: ".12em", textTransform: "uppercase", opacity: .7, marginBottom: ".7rem" }}>Статья</span>
                 <h2 style={{ fontSize: "clamp(1.35rem, 3vw, 2rem)", lineHeight: 1.25, margin: "0 0 .8rem" }}>{article.title}</h2>
                 <p style={{ lineHeight: 1.65, margin: "0 0 1rem" }}>{article.description}</p>
