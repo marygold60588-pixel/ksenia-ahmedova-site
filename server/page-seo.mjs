@@ -1,3 +1,5 @@
+import { LIBRARY_PAGE_SEO } from "./library-seo.generated.mjs";
+
 const PAGE_SEO = {
   "/strah-otverzheniya": {
     title: "Страх отвержения: почему отказ ощущается как «меня нет»",
@@ -5,7 +7,7 @@ const PAGE_SEO = {
       "Чем страх отказа отличается от страха отвержения. Почему можно понимать, что ничего страшного не случилось, и всё равно реагировать стыдом, тревогой или желанием исчезнуть.",
     canonical: "https://ksenia-ahmedova.ru/strah-otverzheniya",
     ogType: "article",
-    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    ogImage: "https://ksenia-ahmedova.ru/images/library/strah-otverzheniya.jpg",
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -17,7 +19,7 @@ const PAGE_SEO = {
       dateModified: "2026-09-11",
       mainEntityOfPage: "https://ksenia-ahmedova.ru/strah-otverzheniya",
       url: "https://ksenia-ahmedova.ru/strah-otverzheniya",
-      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      image: "https://ksenia-ahmedova.ru/images/library/strah-otverzheniya.jpg",
       author: {
         "@type": "Person",
         "@id": "https://ksenia-ahmedova.ru/#person",
@@ -36,7 +38,7 @@ const PAGE_SEO = {
       "Почему я боюсь просить и боюсь попросить помощи. Страх попросить часто связан не с самой просьбой, а с тем, что отказ начинает означать про меня.",
     canonical: "https://ksenia-ahmedova.ru/boyus-prosit",
     ogType: "article",
-    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    ogImage: "https://ksenia-ahmedova.ru/images/library/boyus-prosit.jpg",
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -48,7 +50,7 @@ const PAGE_SEO = {
       dateModified: "2026-09-12",
       mainEntityOfPage: "https://ksenia-ahmedova.ru/boyus-prosit",
       url: "https://ksenia-ahmedova.ru/boyus-prosit",
-      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      image: "https://ksenia-ahmedova.ru/images/library/boyus-prosit.jpg",
       author: {
         "@type": "Person",
         "@id": "https://ksenia-ahmedova.ru/#person",
@@ -67,7 +69,7 @@ const PAGE_SEO = {
       "Почему я соглашаюсь, хотя не хочу, и боюсь сказать нет. Часто это не про «неумение ставить границы», а про страх, что своё «нет» испортит отношение.",
     canonical: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
     ogType: "article",
-    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    ogImage: "https://ksenia-ahmedova.ru/images/library/strah-otkaza-i-ugozhdenie.jpg",
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -79,7 +81,7 @@ const PAGE_SEO = {
       dateModified: "2026-09-13",
       mainEntityOfPage: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
       url: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie",
-      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      image: "https://ksenia-ahmedova.ru/images/library/strah-otkaza-i-ugozhdenie.jpg",
       author: {
         "@type": "Person",
         "@id": "https://ksenia-ahmedova.ru/#person",
@@ -98,7 +100,7 @@ const PAGE_SEO = {
       "Почему после отказа хочется исчезнуть, закрыться или уйти первым. Часто это не равнодушие, а способ не встретить следующее «нет».",
     canonical: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
     ogType: "article",
-    ogImage: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+    ogImage: "https://ksenia-ahmedova.ru/images/library/posle-otkaza-hochu-ischeznut.jpg",
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Article",
@@ -110,7 +112,7 @@ const PAGE_SEO = {
       dateModified: "2026-09-14",
       mainEntityOfPage: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
       url: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut",
-      image: "https://ksenia-ahmedova.ru/media/portraits/gaze-sage.png",
+      image: "https://ksenia-ahmedova.ru/images/library/posle-otkaza-hochu-ischeznut.jpg",
       author: {
         "@type": "Person",
         "@id": "https://ksenia-ahmedova.ru/#person",
@@ -222,7 +224,7 @@ export function normalizePathname(urlPath) {
 
 export function applyRouteSeo(html, urlPath) {
   const pathname = normalizePathname(urlPath);
-  const seo = PAGE_SEO[pathname];
+  const seo = PAGE_SEO[pathname] || LIBRARY_PAGE_SEO[pathname];
   if (!seo) return html;
 
   let next = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeAttr(seo.title)}</title>`);

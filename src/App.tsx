@@ -6,6 +6,7 @@ import BoyusPrositPage from "@/pages/BoyusPrositPage";
 import ConsentPage from "@/pages/ConsentPage";
 import HomePage from "@/pages/HomePage";
 import KogdaGovoryatNetPage from "@/pages/KogdaGovoryatNetPage";
+import LibraryArticlePage from "@/pages/LibraryArticlePage";
 import PochemuYaUchityvayuChuzhieZhelaniyaPage from "@/pages/PochemuYaUchityvayuChuzhieZhelaniyaPage";
 import PosleOtkazaHochuIscheznutPage from "@/pages/PosleOtkazaHochuIscheznutPage";
 import PrivacyPage from "@/pages/PrivacyPage";
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
         <Route path="/legal/privacy" element={<PrivacyPage />} />
         <Route path="/legal/consent" element={<ConsentPage />} />
+        <Route path="/:slug" element={<LibraryArticlePage />} />
       </Routes>
     </>
   );

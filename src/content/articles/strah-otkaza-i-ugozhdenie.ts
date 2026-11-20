@@ -8,7 +8,7 @@ export const strahOtkazaIUgozhdenieMeta = {
     "Почему я соглашаюсь, хотя не хочу, и боюсь сказать нет. Часто это не про «неумение ставить границы», а про страх, что своё «нет» испортит отношение.",
   robots: "index, follow",
   ogType: "article",
-  ogImage: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+  ogImage: `${SITE_ORIGIN}/images/library/strah-otkaza-i-ugozhdenie.jpg`,
   published: "2026-09-13",
   jsonLd: {
     "@context": "https://schema.org",
@@ -21,7 +21,7 @@ export const strahOtkazaIUgozhdenieMeta = {
     dateModified: "2026-09-13",
     mainEntityOfPage: `${SITE_ORIGIN}/strah-otkaza-i-ugozhdenie`,
     url: `${SITE_ORIGIN}/strah-otkaza-i-ugozhdenie`,
-    image: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+    image: `${SITE_ORIGIN}/images/library/strah-otkaza-i-ugozhdenie.jpg`,
     author: {
       "@type": "Person",
       "@id": `${SITE_ORIGIN}/#person`,

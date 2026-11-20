@@ -6,11 +6,19 @@ export const metrikaGoals = {
   magnetPageOpen: "magnet_page_open",
   magnetPracticeStart: "magnet_practice_start",
   magnetPracticeComplete: "magnet_practice_complete",
+  articleToPractice: "article_to_practice",
 } as const;
 
 export type MetrikaGoal = (typeof metrikaGoals)[keyof typeof metrikaGoals];
 
-export function reachGoal(target: MetrikaGoal | string) {
+export function reachGoal(
+  target: MetrikaGoal | string,
+  params?: Record<string, string | number | boolean>,
+) {
+  if (params) {
+    window.ym?.(METRIKA_COUNTER_ID, "reachGoal", target, params);
+    return;
+  }
   window.ym?.(METRIKA_COUNTER_ID, "reachGoal", target);
 }
 

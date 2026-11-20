@@ -8,7 +8,7 @@ export const posleOtkazaHochuIscheznutMeta = {
     "Почему после отказа хочется исчезнуть, закрыться или уйти первым. Часто это не равнодушие, а способ не встретить следующее «нет».",
   robots: "index, follow",
   ogType: "article",
-  ogImage: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+  ogImage: `${SITE_ORIGIN}/images/library/posle-otkaza-hochu-ischeznut.jpg`,
   published: "2026-09-14",
   jsonLd: {
     "@context": "https://schema.org",
@@ -21,7 +21,7 @@ export const posleOtkazaHochuIscheznutMeta = {
     dateModified: "2026-09-14",
     mainEntityOfPage: `${SITE_ORIGIN}/posle-otkaza-hochu-ischeznut`,
     url: `${SITE_ORIGIN}/posle-otkaza-hochu-ischeznut`,
-    image: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+    image: `${SITE_ORIGIN}/images/library/posle-otkaza-hochu-ischeznut.jpg`,
     author: {
       "@type": "Person",
       "@id": `${SITE_ORIGIN}/#person`,

@@ -18,20 +18,24 @@ export function ArticleNext({
   children,
   href,
   linkLabel,
+  onCtaClick,
 }: {
   title: string;
-  children: ReactNode;
+  children?: ReactNode;
   href: string;
   linkLabel: string;
+  onCtaClick?: () => void;
 }) {
   return (
     <section className="article-next" aria-labelledby="article-next-title">
       <p className="kicker">Дальше</p>
       <h2 id="article-next-title">{title}</h2>
       {children}
-      <a className="article-next-link" href={href}>
-        {linkLabel}
-      </a>
+      <p className="article-next-cta">
+        <a className="btn btn-solid" href={href} onClick={onCtaClick}>
+          {linkLabel}
+        </a>
+      </p>
     </section>
   );
 }

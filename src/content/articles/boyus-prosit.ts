@@ -8,7 +8,7 @@ export const boyusPrositMeta = {
     "Почему я боюсь просить и боюсь попросить помощи. Страх попросить часто связан не с самой просьбой, а с тем, что отказ начинает означать про меня.",
   robots: "index, follow",
   ogType: "article",
-  ogImage: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+  ogImage: `${SITE_ORIGIN}/images/library/boyus-prosit.jpg`,
   published: "2026-09-12",
   jsonLd: {
     "@context": "https://schema.org",
@@ -21,7 +21,7 @@ export const boyusPrositMeta = {
     dateModified: "2026-09-12",
     mainEntityOfPage: `${SITE_ORIGIN}/boyus-prosit`,
     url: `${SITE_ORIGIN}/boyus-prosit`,
-    image: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+    image: `${SITE_ORIGIN}/images/library/boyus-prosit.jpg`,
     author: {
       "@type": "Person",
       "@id": `${SITE_ORIGIN}/#person`,

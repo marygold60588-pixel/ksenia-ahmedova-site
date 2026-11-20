@@ -50,6 +50,14 @@ export default function StrahOtverzheniyaPage() {
         </header>
 
         <div className="article-body" itemProp="articleBody">
+          <figure className="library-cover">
+            <img
+              src="/images/library/strah-otverzheniya.jpg"
+              alt="Обложка статьи о страхе отвержения"
+              width={1600}
+              height={900}
+            />
+          </figure>
           <p className="article-emphasis">
             Если это несоответствие вам знакомо, вы не «слишком чувствительны» и не «не умеете держать удар». Часто за
             страхом отказа стоит не только боязнь услышать «нет». Стоит страх отвержения: ощущение, что отказали не в
@@ -129,6 +137,10 @@ export default function StrahOtverzheniyaPage() {
           <p>
             Сцену после отказа — когда хочется закрыть чат, остыть или сказать «мне и не надо» — в статье{" "}
             <a href="/posle-otkaza-hochu-ischeznut">«Почему после отказа хочется исчезнуть»</a>.
+          </p>
+          <p>
+            Близкая тема — как страх быть отвергнутым влияет на отношения — в материале{" "}
+            <a href="/strah-byt-otvergnutym">«Страх быть отвергнутым»</a>.
           </p>
 
           <h2>Как это проявляется во взрослой жизни</h2>
@@ -338,9 +350,11 @@ export default function StrahOtverzheniyaPage() {
               Разберите одну реальную ситуацию: что произошло, что возможное или реальное „нет“ заставило вас почувствовать
               о себе и что вы сделали дальше. Короткая практика на 5–7 минут.
             </p>
-            <a className="article-next-link" href="/kogda-govoryat-net">
-              Разобрать свою реакцию на отказ
-            </a>
+            <p className="article-next-cta">
+              <a className="btn btn-solid" href="/kogda-govoryat-net">
+                Пройти бесплатную практику
+              </a>
+            </p>
           </section>
 
           <p className="article-disclaimer">

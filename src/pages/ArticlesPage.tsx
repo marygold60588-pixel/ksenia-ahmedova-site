@@ -1,60 +1,126 @@
+import { useMemo, useState } from "react";
 import Noise from "@/components/bits/Noise";
 import Footer from "@/components/layout/Footer";
 import { site } from "@/content";
+import { libraryArticles, LIBRARY_CLUSTER_LABELS } from "@/content/library/index.generated";
+import { legacyArticles } from "@/content/library/legacy";
 import { usePageMeta } from "@/lib/page-meta";
 
-const articlesMeta = { title: "Статьи о психологии отношений — Ксения Ахмедова", description: "Психоаналитические статьи о страхе отказа, отвержении, просьбах и границах.", canonical: "https://ksenia-ahmedova.ru/articles", ogType: "website" };
+const articlesMeta = {
+  title: "Статьи о психологии отношений — Ксения Ахмедова",
+  description:
+    "Психоаналитические статьи о страхе отказа, отвержении, просьбах и границах.",
+  canonical: "https://ksenia-ahmedova.ru/articles",
+  ogType: "website",
+};
 
-const articles = [
-  {
-    href: "/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
-    title: "Почему я всегда учитываю чужие желания, а мои никто не замечает?",
-    description:
-      "Почему мы уступаем близким, отказываемся от собственных желаний, а затем испытываем обиду и раздражение.",
-    image: "/media/portraits/zadumchivaya-passazhirka.jpg",
-    imageAlt:
-      "Элегантная женщина испытывает недовольство в отношениях, несмотря на внешнее благополучие.",
-  },
-  { href: "/strah-otverzheniya", title: "Страх отвержения: почему отказ ощущается как «меня нет»", description: "Когда чужое «нет» переживается как угроза собственной ценности." },
-  { href: "/boyus-prosit", title: "Почему я боюсь просить", description: "Почему простая просьба может ощущаться как опасность и что стоит за этим страхом." },
-  { href: "/strah-otkaza-i-ugozhdenie", title: "Почему я соглашаюсь, хотя не хочу", description: "О привычке говорить «да» раньше, чем удаётся услышать собственное желание." },
-  { href: "/posle-otkaza-hochu-ischeznut", title: "Почему после отказа хочется исчезнуть", description: "Почему после отказа хочется отступить, замолчать и отказаться от того, что было важно." },
-];
+type CatalogItem = {
+  href: string;
+  title: string;
+  description: string;
+  cluster: string;
+  clusterLabel: string;
+  image?: string;
+  imageAlt?: string;
+  date?: string;
+};
 
 export default function ArticlesPage() {
   usePageMeta(articlesMeta);
+  const [cluster, setCluster] = useState("all");
+
+  const items = useMemo<CatalogItem[]>(() => {
+    const library = libraryArticles.map((article) => ({
+      href: `/${article.slug}`,
+      title: article.h1,
+      description: article.description,
+      cluster: article.cluster,
+      clusterLabel: article.clusterLabel,
+      image: article.cover,
+      imageAlt: article.coverAlt,
+      date: article.date,
+    }));
+    return [...library, ...legacyArticles].sort((a, b) =>
+      String(b.date || "").localeCompare(String(a.date || "")),
+    );
+  }, []);
+
+  const clusters = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of items) map.set(item.cluster, item.clusterLabel);
+    for (const [key, label] of Object.entries(LIBRARY_CLUSTER_LABELS)) {
+      if (!map.has(key)) map.set(key, label);
+    }
+    return [...map.entries()];
+  }, [items]);
+
+  const visible = cluster === "all" ? items : items.filter((item) => item.cluster === cluster);
+
   return (
     <div className="article-page">
       <Noise />
       <main>
-        <section className="article-hero" style={{ minHeight: "auto", paddingBottom: "3rem" }}>
+        <section className="article-hero library-catalog-hero">
           <div className="article-top">
-            <a className="article-brand" href="/"><span>{site.identity.givenName}</span> <span className="article-brand-family">{site.identity.familyName}</span></a>
-            <a className="article-home" href="/">На главную</a>
+            <a className="article-brand" href="/">
+              <span>{site.identity.givenName}</span>{" "}
+              <span className="article-brand-family">{site.identity.familyName}</span>
+            </a>
+            <a className="article-home" href="/">
+              На главную
+            </a>
           </div>
           <div className="article-hero-copy">
             <p className="kicker kicker-light">Библиотека</p>
             <h1 className="article-title">Статьи о психологии отношений</h1>
-            <p>О том, как складываются повторяющиеся сценарии, почему трудно просить, отказывать и оставаться собой рядом с другим человеком.</p>
+            <p>
+              О том, как складываются повторяющиеся сценарии, почему трудно просить, отказывать и
+              оставаться собой рядом с другим человеком.
+            </p>
           </div>
         </section>
-        <section aria-label="Список статей" style={{ maxWidth: 960, margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
-          <div style={{ display: "grid", gap: "1.25rem" }}>
-            {articles.map((article) => (
-              <a key={article.href} href={article.href} style={{ display: "block", padding: "2rem", border: "1px solid rgba(145,122,90,.28)", borderRadius: 18, color: "inherit", textDecoration: "none", background: "rgba(255,255,255,.06)" }}>
-                {"image" in article && article.image ? (
-                  <img
-                    src={article.image}
-                    alt={article.imageAlt}
-                    width={1400}
-                    height={991}
-                    style={{ display: "block", width: "100%", height: "auto", borderRadius: 12, marginBottom: "1.1rem" }}
-                  />
-                ) : null}
-                <span style={{ display: "block", fontSize: ".8rem", letterSpacing: ".12em", textTransform: "uppercase", opacity: .7, marginBottom: ".7rem" }}>Статья</span>
-                <h2 style={{ fontSize: "clamp(1.35rem, 3vw, 2rem)", lineHeight: 1.25, margin: "0 0 .8rem" }}>{article.title}</h2>
-                <p style={{ lineHeight: 1.65, margin: "0 0 1rem" }}>{article.description}</p>
-                <span style={{ textDecoration: "underline", textUnderlineOffset: 4 }}>Читать статью →</span>
+
+        <section className="library-catalog" aria-label="Список статей">
+          <div className="library-filters" role="tablist" aria-label="Тематические кластеры">
+            <button
+              type="button"
+              className={cluster === "all" ? "is-active" : ""}
+              onClick={() => setCluster("all")}
+            >
+              Все темы
+            </button>
+            {clusters.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={cluster === id ? "is-active" : ""}
+                onClick={() => setCluster(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="library-grid">
+            {visible.map((article) => (
+              <a key={article.href} className="library-card" href={article.href}>
+                <div className="library-card-cover">
+                  {article.image ? (
+                    <img
+                      src={article.image}
+                      alt={article.imageAlt || article.title}
+                      width={1600}
+                      height={900}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="library-card-cover-fallback" aria-hidden="true" />
+                  )}
+                </div>
+                <span className="library-card-kicker">Статья</span>
+                <h2>{article.title}</h2>
+                <p>{article.description}</p>
+                <span className="library-card-more">Читать статью →</span>
               </a>
             ))}
           </div>

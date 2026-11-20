@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node server/write-route-seo.mjs",
+    "build:library": "node server/build-library.mjs",
+    "build": "node server/build-library.mjs && tsc -b && vite build && node server/write-route-seo.mjs",
     "preview": "vite preview",
     "start": "node server/index.mjs"
   },

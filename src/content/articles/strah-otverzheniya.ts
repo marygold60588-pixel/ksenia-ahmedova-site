@@ -8,7 +8,7 @@ export const strahOtverzheniyaMeta = {
     "Чем страх отказа отличается от страха отвержения. Почему можно понимать, что ничего страшного не случилось, и всё равно реагировать стыдом, тревогой или желанием исчезнуть.",
   robots: "index, follow",
   ogType: "article",
-  ogImage: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+  ogImage: `${SITE_ORIGIN}/images/library/strah-otverzheniya.jpg`,
   published: "2026-09-11",
   jsonLd: {
     "@context": "https://schema.org",
@@ -21,7 +21,7 @@ export const strahOtverzheniyaMeta = {
     dateModified: "2026-09-11",
     mainEntityOfPage: `${SITE_ORIGIN}/strah-otverzheniya`,
     url: `${SITE_ORIGIN}/strah-otverzheniya`,
-    image: `${SITE_ORIGIN}/media/portraits/gaze-sage.png`,
+    image: `${SITE_ORIGIN}/images/library/strah-otverzheniya.jpg`,
     author: {
       "@type": "Person",
       "@id": `${SITE_ORIGIN}/#person`,
