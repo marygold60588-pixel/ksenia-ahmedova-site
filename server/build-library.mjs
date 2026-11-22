@@ -21,6 +21,7 @@ const STATIC_SITEMAP = [
   { loc: "https://ksenia-ahmedova.ru/strah-otkaza-i-ugozhdenie", lastmod: "2026-09-13" },
   { loc: "https://ksenia-ahmedova.ru/posle-otkaza-hochu-ischeznut", lastmod: "2026-09-14" },
   { loc: "https://ksenia-ahmedova.ru/pochemu-ya-uchityvayu-chuzhie-zhelaniya", lastmod: "2026-11-18" },
+  { loc: "https://ksenia-ahmedova.ru/pochemu-ya-zhdu-ot-muzha", lastmod: "2026-11-22" },
   { loc: "https://ksenia-ahmedova.ru/kogda-govoryat-net", lastmod: "2026-09-11" },
   { loc: "https://ksenia-ahmedova.ru/praktika-ne-otkazyvatsya-ot-sebya", lastmod: "" },
 ];

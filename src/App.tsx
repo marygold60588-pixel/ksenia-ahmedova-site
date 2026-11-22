@@ -8,6 +8,7 @@ import HomePage from "@/pages/HomePage";
 import KogdaGovoryatNetPage from "@/pages/KogdaGovoryatNetPage";
 import LibraryArticlePage from "@/pages/LibraryArticlePage";
 import PochemuYaUchityvayuChuzhieZhelaniyaPage from "@/pages/PochemuYaUchityvayuChuzhieZhelaniyaPage";
+import PochemuYaZhduOtMuzhaPage from "@/pages/PochemuYaZhduOtMuzhaPage";
 import PosleOtkazaHochuIscheznutPage from "@/pages/PosleOtkazaHochuIscheznutPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import StrahOtkazaIUgozhdeniePage from "@/pages/StrahOtkazaIUgozhdeniePage";
@@ -28,6 +29,7 @@ export default function App() {
           path="/pochemu-ya-uchityvayu-chuzhie-zhelaniya"
           element={<PochemuYaUchityvayuChuzhieZhelaniyaPage />}
         />
+        <Route path="/pochemu-ya-zhdu-ot-muzha" element={<PochemuYaZhduOtMuzhaPage />} />
         <Route path="/praktika-ne-otkazyvatsya-ot-sebya" element={<InteractivePracticePage />} />
         <Route path="/kogda-govoryat-net" element={<KogdaGovoryatNetPage />} />
         <Route path="/legal/privacy" element={<PrivacyPage />} />

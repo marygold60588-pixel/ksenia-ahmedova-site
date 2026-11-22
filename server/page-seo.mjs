@@ -158,6 +158,39 @@ const PAGE_SEO = {
         "почему я отказываюсь от своих желаний, почему я постоянно уступаю близким, страх чужого недовольства, подавление собственных желаний, обида в отношениях",
     },
   },
+  "/pochemu-ya-zhdu-ot-muzha": {
+    title: "Почему я жду от мужа обещанного и не решаю сама? | Ксения Ахмедова",
+    description:
+      "Почему женщина годами ждёт помощи от мужа, хотя может решить проблему самостоятельно? Психоаналитический разбор ожидания, обиды и потребности в заботе.",
+    canonical: "https://ksenia-ahmedova.ru/pochemu-ya-zhdu-ot-muzha",
+    ogType: "article",
+    ogImage: "https://ksenia-ahmedova.ru/images/library/pochemu-ya-zhdu-ot-muzha.jpg",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "Почему я годами жду от мужа того, что давно могу сделать сама?",
+      description:
+        "Почему женщина годами ждёт помощи от мужа, хотя может решить проблему самостоятельно? Психоаналитический разбор ожидания, обиды и потребности в заботе.",
+      inLanguage: "ru",
+      datePublished: "2026-11-22",
+      dateModified: "2026-11-22",
+      mainEntityOfPage: "https://ksenia-ahmedova.ru/pochemu-ya-zhdu-ot-muzha",
+      url: "https://ksenia-ahmedova.ru/pochemu-ya-zhdu-ot-muzha",
+      image: "https://ksenia-ahmedova.ru/images/library/pochemu-ya-zhdu-ot-muzha.jpg",
+      author: {
+        "@type": "Person",
+        "@id": "https://ksenia-ahmedova.ru/#person",
+        name: "Ксения Ахмедова",
+        jobTitle: "врач-психотерапевт, психоаналитик",
+        url: "https://ksenia-ahmedova.ru/",
+      },
+      publisher: {
+        "@id": "https://ksenia-ahmedova.ru/#person",
+      },
+      keywords:
+        "почему я жду от мужа, невыполненные обещания в браке, ожидание заботы, самостоятельность в отношениях, психоанализ отношений",
+    },
+  },
   "/kogda-govoryat-net": {
     title: "Когда мне говорят «нет»: карта реакции на отказ",
     description:

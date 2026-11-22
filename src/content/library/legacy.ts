@@ -19,6 +19,19 @@ export const LEGACY_CLUSTER_LABELS = {
 
 export const legacyArticles: LegacyCatalogItem[] = [
   {
+    href: "/pochemu-ya-zhdu-ot-muzha",
+    title: "Почему я годами жду от мужа того, что давно могу сделать сама?",
+    description:
+      "Почему женщина годами ждёт помощи от мужа, хотя может решить проблему самостоятельно? Психоаналитический разбор ожидания, обиды и потребности в заботе.",
+    cluster: "desires",
+    clusterLabel: LEGACY_CLUSTER_LABELS.desires,
+    image: "/images/library/pochemu-ya-zhdu-ot-muzha.jpg",
+    imageAlt:
+      "Женщина в роскошной ванной рядом с золотым полотенцесушителем и открытым участком с проводами.",
+    date: "2026-11-22",
+    source: "legacy",
+  },
+  {
     href: "/pochemu-ya-uchityvayu-chuzhie-zhelaniya",
     title: "Почему я всегда учитываю чужие желания, а мои никто не замечает?",
     description:

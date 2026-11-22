@@ -14,6 +14,7 @@ export const RESERVED_SLUGS = new Set([
   "strah-otkaza-i-ugozhdenie",
   "posle-otkaza-hochu-ischeznut",
   "pochemu-ya-uchityvayu-chuzhie-zhelaniya",
+  "pochemu-ya-zhdu-ot-muzha",
   "kogda-govoryat-net",
   "praktika-ne-otkazyvatsya-ot-sebya",
   "api",
